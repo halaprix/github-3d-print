@@ -1,0 +1,55 @@
+*{ box-sizing: border-box; }
+html{ height:100%; background:radial-gradient(80% 100% at 50% 0%, #0f1b2b 0%, #0b0f14 70%); background-attachment: fixed; background-repeat: no-repeat; }
+body{ margin:0; padding:0; min-height:100dvh; color:#e3eefc; background: transparent; display:flex; flex-direction: column; }
+input,button{ font: inherit; }
+
+.container{ max-width: 1100px; margin: 0 auto; padding: 32px 20px; }
+.card{ background: linear-gradient(180deg, rgba(22,30,43,.6), rgba(15,22,31,.6)); border:1px solid #1b2633; border-radius: 14px; box-shadow: 0 10px 30px rgba(0,0,0,.3); overflow: hidden; }
+.card-header{ padding: 20px 24px; border-bottom:1px solid #1b263355; display:flex; align-items:center; justify-content:space-between; gap:16px; }
+.card-body{ padding: 20px 24px; }
+.title{ font-size: 28px; font-weight: 800; letter-spacing: .3px; display:flex; align-items:center; gap:12px; }
+.subtitle{ color:#9fb3c8 }
+.pill{ padding: 4px 10px; border-radius:20px; background: #10243e; border:1px solid #243b53; color:#cfe6ff; font-size: 12px; }
+
+.toolbar{ display:flex; gap:10px; align-items:center; }
+.input{ background:#0e1621; color:#e3eefc; border:1px solid #1b2633; border-radius:10px; padding:10px 12px; min-width: 280px; outline: none; }
+.button{
+  background: linear-gradient(180deg, #2a74ff, #1a61d4);
+  color: white;
+  border: 1px solid #2b4b7e;
+  padding: 10px 14px;
+  border-radius: 12px;
+  cursor: pointer;
+  box-shadow: 0 6px 18px rgba(31, 111, 235, .32), inset 0 1px 0 rgba(255,255,255,.06);
+  transition: transform .12s ease, box-shadow .12s ease, filter .12s ease;
+}
+.button:hover:not(:disabled){
+  transform: translateY(-1px);
+  box-shadow: 0 10px 26px rgba(31,111,235,.38), inset 0 1px 0 rgba(255,255,255,.08);
+  filter: brightness(1.02);
+}
+.button:active:not(:disabled){
+  transform: translateY(0);
+  box-shadow: 0 4px 14px rgba(31,111,235,.32), inset 0 1px 0 rgba(255,255,255,.05);
+}
+.button:focus-visible{
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(47, 128, 237, .35), 0 8px 24px rgba(31,111,235,.3);
+}
+.button:disabled{
+  opacity: .6;
+  cursor: not-allowed;
+}
+.button.loading{ cursor: progress; }
+.spinner{
+  width: 14px; height: 14px;
+  border: 2px solid rgba(255,255,255,.4);
+  border-top-color: #fff;
+  border-radius: 50%;
+  display: inline-block;
+  animation: spin .9s linear infinite;
+  margin-right: 8px;
+  vertical-align: -2px;
+}
+@keyframes spin{ to { transform: rotate(360deg); } }
+.muted{ color:#7a8aa0 }
