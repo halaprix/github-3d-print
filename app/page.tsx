@@ -14,7 +14,7 @@ export default function HomePage() {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch(`/api/github?username=${encodeURIComponent(username)}`);
+      const res = await fetch(`/api/github/${encodeURIComponent(username)}`);
       if (!res.ok) {
         throw new Error(`Failed: ${res.status}`);
       }
