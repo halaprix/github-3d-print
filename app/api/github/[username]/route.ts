@@ -1,10 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 
+export const revalidate = 3600; // seconds
+export const dynamic = 'force-static';
+
 const GITHUB_GRAPHQL_URL = 'https://api.github.com/graphql';
 
-export async function GET(req: NextRequest) {
-  const { searchParams } = new URL(req.url);
-  const username = searchParams.get('username');
+export async function GET(_req: NextRequest, { params }: { params: { username: string } }) {
+  const username = params.username;
   if (!username) return NextResponse.json({ error: 'username required' }, { status: 400 });
 
   const token = process.env.GITHUB_TOKEN;
@@ -34,8 +36,9 @@ export async function GET(req: NextRequest) {
       'Authorization': `Bearer ${token}`,
       'User-Agent': 'github-3d-print-app'
     },
-    body: JSON.stringify({ query, variables: { login: username } })
-  });
+    body: JSON.stringify({ query, variables: { login: username } }),
+    next: { revalidate }
+  } as RequestInit & { next: { revalidate: number } });
 
   if (!resp.ok) {
     const text = await resp.text();
@@ -45,7 +48,6 @@ export async function GET(req: NextRequest) {
   const data = await resp.json();
   const user = data?.data?.user;
   const weeks = user?.contributionsCollection?.contributionCalendar?.weeks ?? [];
-  // weeks is array of 7-day blocks; we want a grid rows=7 (days), columns=weeks
   const rows = 7;
   const cols = weeks.length;
   const grid: number[][] = Array.from({ length: rows }, () => Array.from({ length: cols }, () => 0));
@@ -61,23 +63,27 @@ export async function GET(req: NextRequest) {
     ? { name: user.name ?? user.login, login: user.login, avatarUrl: user.avatarUrl as string, url: user.url as string }
     : null;
 
-  return NextResponse.json({ grid, profile });
+  return new NextResponse(JSON.stringify({ grid, profile }), {
+    status: 200,
+    headers: {
+      'Content-Type': 'application/json',
+      // Cache at CDN/edge and allow brief SWR window
+      'Cache-Control': 'public, s-maxage=3600, stale-while-revalidate=60'
+    }
+  });
 }
 
 function colorToHeight(hex: string): number {
-  // Expect formats like #RRGGBB
   if (!/^#?[0-9a-fA-F]{6}$/.test(hex)) return 0;
   const h = hex.startsWith('#') ? hex.slice(1) : hex;
   const r = parseInt(h.slice(0, 2), 16) / 255;
   const g = parseInt(h.slice(2, 4), 16) / 255;
   const b = parseInt(h.slice(4, 6), 16) / 255;
-  // sRGB to linear
   const srgbToLinear = (c: number) => (c <= 0.04045 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4));
   const R = srgbToLinear(r);
   const G = srgbToLinear(g);
   const B = srgbToLinear(b);
-  const luminance = 0.2126 * R + 0.7152 * G + 0.0722 * B; // 0..1
-  const intensity = 1 - luminance; // darker = taller
-  // clamp to [0,1]
+  const luminance = 0.2126 * R + 0.7152 * G + 0.0722 * B;
+  const intensity = 1 - luminance;
   return Math.max(0, Math.min(1, intensity));
 }
