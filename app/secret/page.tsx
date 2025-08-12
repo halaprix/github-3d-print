@@ -3,6 +3,7 @@
 import { Suspense, useEffect, useMemo, useState } from 'react';
 import { createWalletClient, custom, getContract, http, parseAbi } from 'viem';
 import { nftConfig } from '@/lib/nftConfig';
+import { PRESET_PALETTES as LIB_PRESETS } from '@/lib/palettes';
 import { useSearchParams } from 'next/navigation';
 
 type Palette = { id: string; name: string; colors: string[] };
@@ -33,7 +34,7 @@ function StudioInner() {
   const [cell, setCell] = useState(Number(sp.get('cell') || 40));
   const [gap, setGap] = useState(Number(sp.get('gap') || 6));
   const [palette, setPalette] = useState<string[]>(defaultColors());
-  const [preset, setPreset] = useState<string>(PRESET_PALETTES[0].id);
+  const [preset, setPreset] = useState<string>('neon-city');
   const [shape, setShape] = useState<'rounded' | 'pixel' | 'circle' | 'diamond' | 'hex' | 'triangle'>('rounded');
   const [period, setPeriod] = useState<{ start: string; end: string } | null>(null);
 
@@ -148,24 +149,39 @@ function StudioInner() {
   }
   function onPresetChange(id: string) {
     setPreset(id);
-    const found = PRESET_PALETTES.find((p) => p.id === id);
+    const found = PRESET_PALETTES.find((p) => p.name.toLowerCase().includes(id.replace('-', ' ')));
     if (found) setPalette(found.colors);
   }
 
   const nftId = useMemo(() => {
-    if (!grid || !user) return '';
-    const periodStr = period ? `${period.start}:${period.end}` : 'unknown';
-    const paletteStr = palette.join(',');
-    const shapeStr = shape;
-    const raw = `${user}|${periodStr}|${paletteStr}|${shapeStr}`;
-    // simple deterministic hash (FNV-1a 32-bit)
-    let h = 0x811c9dc5;
-    for (let i = 0; i < raw.length; i++) {
-      h ^= raw.charCodeAt(i);
-      h = (h + ((h << 1) + (h << 4) + (h << 7) + (h << 8) + (h << 24))) >>> 0;
+    if (!grid) return '';
+    // Encode 7x7 intensities (normalize to 0..15) -> 49 nibbles => bits 0..195
+    let id = 0n;
+    const rows = 7, cols = 7;
+    const flat: number[] = [];
+    const max = Math.max(1, ...grid.flat());
+    for (let y = 0; y < rows; y++) {
+      for (let x = 0; x < cols; x++) {
+        const t = Math.max(0, Math.min(1, (grid[y][x] || 0) / max));
+        const level = Math.max(0, Math.min(15, Math.round(t * 15)));
+        flat.push(level);
+      }
     }
-    return `0x${h.toString(16).padStart(8, '0')}`;
-  }, [grid, user, period, palette, shape]);
+    // pack little-endian nibbles
+    for (let i = 0; i < flat.length; i++) {
+      id |= BigInt(flat[i] & 0xf) << BigInt(i * 4);
+    }
+    // shape bits 196..198
+    const shapeIndex = ['rounded', 'pixel', 'circle', 'diamond', 'hex', 'triangle'].indexOf(shape);
+    id |= BigInt(shapeIndex & 0x7) << 196n;
+    // preset id 199..201 using PRESET_PALETTES index
+    // map to library preset index (names match order)
+    const presetIndex = Math.max(0, Math.min(7, LIB_PRESETS.findIndex((p) => p.colors.join(',') === palette.join(','))));
+    id |= BigInt(presetIndex & 0x7) << 199n;
+    // version 1 in bits 234..241
+    id |= 1n << 234n;
+    return `0x${id.toString(16)}`;
+  }, [grid, palette, shape]);
 
   const [account, setAccount] = useState<string | null>(null);
   const [txHash, setTxHash] = useState<string | null>(null);
@@ -200,11 +216,10 @@ function StudioInner() {
       // Optional: enforce chain id to prevent accidental wrong-network mints
       // const current = await client.getChainId(); if (current !== nftConfig.chain.id) throw new Error('Wrong network');
       const abi = parseAbi([
-        'function publicMint() public returns (uint256)',
-        'function nextTokenId() public view returns (uint256)'
+        'function publicMintDeterministic(uint256 tokenId) public returns (uint256)'
       ]);
       const contract = getContract({ address: nftConfig.contractAddress as `0x${string}` , abi, client });
-      const hash = await contract.write.publicMint({ account: from, chain: client.chain });
+      const hash = await contract.write.publicMintDeterministic([BigInt(nftId)], { account: from, chain: client.chain });
       setTxHash(hash);
     } catch (e: any) {
       alert(e?.message || String(e));

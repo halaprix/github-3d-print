@@ -50,4 +50,11 @@ contract Github3DPrintNFT is ERC721, Ownable {
         _safeMint(msg.sender, tokenId);
         return tokenId;
     }
+
+    function publicMintDeterministic(uint256 tokenId) external returns (uint256) {
+        require(publicMintEnabled, "mint disabled");
+        require(_ownerOf(tokenId) == address(0), "already minted");
+        _safeMint(msg.sender, tokenId);
+        return tokenId;
+    }
 }
