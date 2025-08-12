@@ -14,7 +14,8 @@ export async function GET(_req: NextRequest, { params }: { params: { id: string 
   const { grid, shapeIndex, presetIndex } = decoded;
   const palette = PRESET_PALETTES[presetIndex]?.colors ?? PRESET_PALETTES[0].colors;
   const svg = buildGridSvg(grid, palette, shapeIndex);
-  const image = `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
+  const imageB64 = Buffer.from(svg, 'utf8').toString('base64');
+  const image = `data:image/svg+xml;base64,${imageB64}`;
   const name = `GitHub 3D Print #${idStr}`;
   const metadata = {
     name,
@@ -22,6 +23,9 @@ export async function GET(_req: NextRequest, { params }: { params: { id: string 
     image,
     image_data: svg,
     attributes: [
+      { trait_type: 'MimeType', value: 'image/svg+xml' },
+      { trait_type: 'Encoding', value: 'base64' },
+      { trait_type: 'Embedded', value: 'true' },
       { trait_type: 'Shape', value: ['rounded','pixel','circle','diamond','hex','triangle'][shapeIndex] ?? 'rounded' },
       { trait_type: 'Palette', value: PRESET_PALETTES[presetIndex]?.name ?? 'Unknown' }
     ]
@@ -100,7 +104,7 @@ function buildGridSvg(grid: number[][], palette: string[], shapeIndex: number): 
       shapes.push(draw(vx, vy, fill));
     }
   }
-  return `<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"${width}\" height=\"${height}\" viewBox=\"0 0 ${width} ${height}\">\n<rect x=\"0\" y=\"0\" width=\"${width}\" height=\"${height}\" fill=\"${bg}\"/>\n${shapes.join('\\n')}\n</svg>`;
+  return `<?xml version="1.0" encoding="UTF-8"?>\n<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" shape-rendering="geometricPrecision" preserveAspectRatio="xMidYMid meet">\n<rect x="0" y="0" width="${width}" height="${height}" fill="${bg}"/>\n${shapes.join('\\n')}\n</svg>`;
 }
 
 
