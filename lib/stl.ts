@@ -41,7 +41,7 @@ function buildTriangles(grid: number[][], label?: string) {
   const cellsY = grid.length;
   const cellSize = 1;
   const gap = 0.1;
-  const baseHeight = 0.4;
+  const baseHeight = 0.0;
   const heightScale = 1.2; // scaled x2 to match viewer
   const plateThickness = 0.8;
   const plateMargin = 0.2;
