@@ -1,74 +1,106 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { PRESET_PALETTES } from '@/lib/palettes';
 
 export const dynamic = 'force-dynamic';
 
-function buildSvg(tokenId: string, title?: string): string {
-  const safeTitle = title?.slice(0, 80) ?? `GitHub 3D Print #${tokenId}`;
-  const hue = Math.abs(hashString(tokenId)) % 360;
-  const bg = `hsl(${hue}, 70%, 12%)`;
-  const fg = `hsl(${(hue + 180) % 360}, 80%, 60%)`;
-  return [
-    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630">',
-    `<defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="${fg}"/><stop offset="100%" stop-color="${bg}"/></linearGradient></defs>`,
-    `<rect width="100%" height="100%" fill="${bg}"/>`,
-    '<g transform="translate(100,100)">',
-    `<rect x="0" y="0" width="1000" height="430" rx="24" fill="url(#g)" opacity="0.25"/>`,
-    `<text x="500" y="160" text-anchor="middle" font-family="ui-sans-serif, system-ui, -apple-system" font-size="72" fill="white">${escapeXml(safeTitle)}</text>`,
-    `<text x="500" y="260" text-anchor="middle" font-family="ui-sans-serif, system-ui, -apple-system" font-size="40" fill="${fg}">Token #${escapeXml(tokenId)}</text>`,
-    `<circle cx="150" cy="340" r="10" fill="${fg}"/>`,
-    `<circle cx="200" cy="340" r="10" fill="${fg}" opacity="0.8"/>`,
-    `<circle cx="250" cy="340" r="10" fill="${fg}" opacity="0.6"/>`,
-    `<circle cx="300" cy="340" r="10" fill="${fg}" opacity="0.4"/>`,
-    `<circle cx="350" cy="340" r="10" fill="${fg}" opacity="0.2"/>`,
-    '</g>',
-    '</svg>'
-  ].join('');
-}
-
-function escapeXml(str: string): string {
-  return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-}
-
-function hashString(input: string): number {
-  let hash = 0;
-  for (let i = 0; i < input.length; i++) {
-    hash = (hash << 5) - hash + input.charCodeAt(i);
-    hash |= 0;
-  }
-  return hash;
-}
-
-export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
-  const tokenId = params.id;
-  const { searchParams } = new URL(req.url);
-  const title = searchParams.get('title') ?? undefined;
-
-  if (!tokenId || !/^[0-9]+$/.test(tokenId)) {
+export async function GET(_req: NextRequest, { params }: { params: { id: string } }) {
+  const idStr = params.id;
+  if (!/^\d+$/.test(idStr)) {
     return NextResponse.json({ error: 'Invalid token id' }, { status: 400 });
   }
-
-  const svg = buildSvg(tokenId, title ?? undefined);
+  const tokenId = BigInt(idStr);
+  const decoded = decodeTokenId(tokenId);
+  if (!decoded) return NextResponse.json({ error: 'Malformed token id' }, { status: 400 });
+  const { grid, shapeIndex, presetIndex } = decoded;
+  const palette = PRESET_PALETTES[presetIndex]?.colors ?? PRESET_PALETTES[0].colors;
+  const svg = buildGridSvg(grid, palette, shapeIndex);
   const image = `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
-  // Some marketplaces prefer `image_data` for inline SVG
-  const name = title ?? `GitHub 3D Print #${tokenId}`;
-
+  const name = `GitHub 3D Print #${idStr}`;
   const metadata = {
     name,
-    description: 'Dynamic SVG NFT for GitHub 3D Print. Base URI can be updated on-chain to point elsewhere later.',
+    description: 'Deterministic SVG NFT for GitHub 3D Print. Token ID encodes grid, shape, and palette.',
     image,
     image_data: svg,
     attributes: [
-      { trait_type: 'Token ID', value: tokenId }
+      { trait_type: 'Shape', value: ['rounded','pixel','circle','diamond','hex','triangle'][shapeIndex] ?? 'rounded' },
+      { trait_type: 'Palette', value: PRESET_PALETTES[presetIndex]?.name ?? 'Unknown' }
     ]
-  } satisfies Record<string, unknown>;
+  } as const;
 
   return new NextResponse(JSON.stringify(metadata), {
     status: 200,
-    headers: {
-      'Content-Type': 'application/json',
-      'Cache-Control': 'public, s-maxage=60'
-    }
+    headers: { 'Content-Type': 'application/json', 'Cache-Control': 'public, s-maxage=60' }
   });
+}
+
+function decodeTokenId(id: bigint): { grid: number[][]; shapeIndex: number; presetIndex: number } | null {
+  const version = Number((id >> 234n) & 0xffn);
+  if (version !== 1) return null;
+  const shapeIndex = Number((id >> 196n) & 0x7n);
+  const presetIndex = Number((id >> 199n) & 0x7n);
+  const flat: number[] = [];
+  for (let i = 0; i < 49; i++) {
+    const nibble = Number((id >> BigInt(i * 4)) & 0xfn);
+    flat.push(nibble);
+  }
+  const grid: number[][] = [];
+  for (let y = 0; y < 7; y++) grid.push(flat.slice(y * 7, y * 7 + 7));
+  return { grid, shapeIndex, presetIndex };
+}
+
+function buildGridSvg(grid: number[][], palette: string[], shapeIndex: number): string {
+  const rows = 7, cols = 7;
+  const cell = 40, gap = 6;
+  const width = cols * cell + (cols - 1) * gap;
+  const height = rows * cell + (rows - 1) * gap;
+  const bg = palette[0] || '#0a0f1a';
+  const shapes: string[] = [];
+  const inset = Math.max(1, Math.floor(cell * 0.12));
+  const draw = (vx: number, vy: number, fill: string) => {
+    const cx = vx + cell / 2;
+    const cy = vy + cell / 2;
+    switch (shapeIndex) {
+      case 1: return `<rect x="${vx}" y="${vy}" width="${cell}" height="${cell}" fill="${fill}"/>`;
+      case 0: return `<rect x="${vx}" y="${vy}" width="${cell}" height="${cell}" rx="${Math.floor(cell * 0.22)}" ry="${Math.floor(cell * 0.22)}" fill="${fill}"/>`;
+      case 2: {
+        const r = Math.max(1, cell / 2 - inset);
+        return `<circle cx="${cx}" cy="${cy}" r="${r}" fill="${fill}"/>`;
+      }
+      case 3: {
+        const p = [ `${cx},${vy + inset}`, `${vx + cell - inset},${cy}`, `${cx},${vy + cell - inset}`, `${vx + inset},${cy}` ].join(' ');
+        return `<polygon points="${p}" fill="${fill}"/>`;
+      }
+      case 4: {
+        const r = Math.max(1, cell / 2 - inset);
+        const a = 0.866025403784;
+        const p = [ `${cx - a * r},${cy - r / 2}`, `${cx},${cy - r}`, `${cx + a * r},${cy - r / 2}`, `${cx + a * r},${cy + r / 2}`, `${cx},${cy + r}`, `${cx - a * r},${cy + r / 2}` ].join(' ');
+        return `<polygon points="${p}" fill="${fill}"/>`;
+      }
+      case 5: {
+        const p = [ `${cx},${vy + inset}`, `${vx + cell - inset},${vy + cell - inset}`, `${vx + inset},${vy + cell - inset}` ].join(' ');
+        return `<polygon points="${p}" fill="${fill}"/>`;
+      }
+      default: return `<rect x="${vx}" y="${vy}" width="${cell}" height="${cell}" fill="${fill}"/>`;
+    }
+  };
+  const maxNibble = 15;
+  const stops = palette.slice(1);
+  const colorFor = (nibble: number) => {
+    if (nibble <= 0) return palette[0] || '#0a0f1a';
+    const t = nibble / maxNibble;
+    const idx = Math.min(stops.length - 1, Math.floor(t * stops.length));
+    return stops[idx] || '#1f6feb';
+  };
+  for (let y = 0; y < rows; y++) {
+    for (let x = 0; x < cols; x++) {
+      const vx = x * (cell + gap);
+      const vy = y * (cell + gap);
+      const nibble = grid[y][x] || 0;
+      const fill = colorFor(nibble);
+      shapes.push(draw(vx, vy, fill));
+    }
+  }
+  return `<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"${width}\" height=\"${height}\" viewBox=\"0 0 ${width} ${height}\">\n<rect x=\"0\" y=\"0\" width=\"${width}\" height=\"${height}\" fill=\"${bg}\"/>\n${shapes.join('\\n')}\n</svg>`;
 }
 
 
