@@ -58,6 +58,10 @@ export async function GET(_req: NextRequest, { params }: { params: { username: s
       grid[y][x] = color ? colorToHeight(color) : 0;
     }
   }
+  // Rotate histogram 180° around vertical axis (mirror columns)
+  for (let y = 0; y < rows; y++) {
+    grid[y].reverse();
+  }
 
   const profile = user
     ? { name: user.name ?? user.login, login: user.login, avatarUrl: user.avatarUrl as string, url: user.url as string }

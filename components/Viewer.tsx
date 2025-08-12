@@ -4,13 +4,14 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import * as THREE from 'three';
 import { exportGridToSTL } from '@/lib/stl';
 
-export function Viewer({ grid, label }: { grid: number[][]; label?: string }) {
+export function Viewer({ grid, label, mode }: { grid: number[][]; label?: string; mode?: 'full' | 'compact' }) {
   const mountRef = useRef<HTMLDivElement | null>(null);
   const [error, setError] = useState<string | null>(null);
   const textRef = useRef<THREE.Mesh | null>(null);
   const [downloading, setDownloading] = useState(false);
 
-  const { geometry, meshCount, layout } = useMemo(() => buildGeometryFromGrid(grid), [grid]);
+  const compact = mode === 'compact';
+  const { geometry, meshCount, layout } = useMemo(() => buildGeometryFromGrid(grid, compact), [grid, compact]);
 
   useEffect(() => {
     const mount = mountRef.current!;
@@ -59,7 +60,7 @@ export function Viewer({ grid, label }: { grid: number[][]; label?: string }) {
 
     // Optional 3D text label attached on the front strip of the base
     let textMesh: THREE.Mesh | null = null;
-    if (label) {
+    if (label && !compact) {
       const { FontLoader } = require('three/examples/jsm/loaders/FontLoader');
       const { TextGeometry } = require('three/examples/jsm/geometries/TextGeometry');
       const loader = new FontLoader();
@@ -188,7 +189,7 @@ export function Viewer({ grid, label }: { grid: number[][]; label?: string }) {
   );
 }
 
-function buildGeometryFromGrid(grid: number[][]) {
+function buildGeometryFromGrid(grid: number[][], compact: boolean) {
   const geom = new THREE.BufferGeometry();
   const cellsX = grid.length > 0 ? grid[0].length : 0;
   const cellsY = grid.length;
@@ -198,11 +199,13 @@ function buildGeometryFromGrid(grid: number[][]) {
 
   const cellSize = 1;
   const gap = 0.1;
-  const baseHeight = 0.4;
+  const baseHeight = 0.0;
   const heightScale = 1.2; // scaled x2
   const plateThickness = 0.8; // printable base
   const plateMargin = 0.2;
-  const titleStripDepth = 3.0; // extra base area in front for label
+  const titleStripDepth = compact ? 0.0 : 3.0; // no label strip in compact mode
+  const compactBottomScale = compact ? 0.4 : 1.0; // thinner bottom below grid
+  const extraMargin = compact ? 0.6 : 0.2; // larger side/top margins for even look
 
   let indexOffset = 0;
   for (let y = 0; y < cellsY; y++) {
@@ -223,11 +226,13 @@ function buildGeometryFromGrid(grid: number[][]) {
   if (cellsX > 0 && cellsY > 0) {
     const totalWidth = cellsX * cellSize + (cellsX - 1) * gap;
     const totalDepth = cellsY * cellSize + (cellsY - 1) * gap;
-    const bx = -plateMargin;
-    const bz = -(plateMargin + titleStripDepth);
-    const bw = totalWidth + 2 * plateMargin;
-    const bd = totalDepth + 2 * plateMargin + titleStripDepth;
-    const { v: bv, n: bn, i: bi } = boxGeometry(bx, -plateThickness, bz, bw, plateThickness, bd, indexOffset);
+    const margin = compact ? extraMargin : plateMargin;
+    const bx = -margin;
+    const bz = -(margin + titleStripDepth);
+    const bw = totalWidth + 2 * margin;
+    const bd = totalDepth + 2 * margin + titleStripDepth;
+    const bottomThickness = plateThickness * (compact ? compactBottomScale : 1.0);
+    const { v: bv, n: bn, i: bi } = boxGeometry(bx, -bottomThickness, bz, bw, bottomThickness, bd, indexOffset);
     vertices.push(...bv);
     normals.push(...bn);
     indices.push(...bi);
