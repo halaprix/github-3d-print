@@ -1,6 +1,8 @@
 "use client";
 
 import { Suspense, useEffect, useMemo, useState } from 'react';
+import { createWalletClient, custom, getContract, http, parseAbi } from 'viem';
+import { nftConfig } from '@/lib/nftConfig';
 import { useSearchParams } from 'next/navigation';
 
 type Palette = { id: string; name: string; colors: string[] };
@@ -165,6 +167,52 @@ function StudioInner() {
     return `0x${h.toString(16).padStart(8, '0')}`;
   }, [grid, user, period, palette, shape]);
 
+  const [account, setAccount] = useState<string | null>(null);
+  const [txHash, setTxHash] = useState<string | null>(null);
+  const [minting, setMinting] = useState(false);
+
+  async function connectWallet() {
+    const eth = (window as any).ethereum;
+    if (!eth) {
+      alert('No wallet found. Install MetaMask.');
+      return;
+    }
+    const [addr] = await eth.request({ method: 'eth_requestAccounts' });
+    setAccount(addr);
+  }
+
+  async function mint() {
+    try {
+      const eth = (window as any).ethereum;
+      if (!eth) return alert('No wallet');
+      setMinting(true);
+      setTxHash(null);
+      const client = createWalletClient({
+        chain: {
+          id: nftConfig.chain.id,
+          name: nftConfig.chain.name,
+          nativeCurrency: { name: 'ETH', symbol: 'ETH', decimals: 18 },
+          rpcUrls: { default: { http: [nftConfig.chain.rpcUrl] } }
+        } as any,
+        transport: custom(eth)
+      });
+      const [from] = await client.requestAddresses();
+      // Optional: enforce chain id to prevent accidental wrong-network mints
+      // const current = await client.getChainId(); if (current !== nftConfig.chain.id) throw new Error('Wrong network');
+      const abi = parseAbi([
+        'function publicMint() public returns (uint256)',
+        'function nextTokenId() public view returns (uint256)'
+      ]);
+      const contract = getContract({ address: nftConfig.contractAddress as `0x${string}` , abi, client });
+      const hash = await contract.write.publicMint({ account: from, chain: client.chain });
+      setTxHash(hash);
+    } catch (e: any) {
+      alert(e?.message || String(e));
+    } finally {
+      setMinting(false);
+    }
+  }
+
   return (
     <main className="container" style={{ display: 'grid', gap: 16 }}>
       <section className="card">
@@ -209,6 +257,13 @@ function StudioInner() {
             <button className="button" onClick={downloadSvg}>Download SVG</button>
           </div>
           <div className="muted">NFT ID (palette + shape + user + period): {nftId}</div>
+          <div style={{ display:'flex', gap:8, alignItems:'center', flexWrap:'wrap' as const }}>
+            <button className="button" onClick={connectWallet} disabled={!!account}>{account ? `Connected: ${account.slice(0,6)}…${account.slice(-4)}` : 'Connect Wallet'}</button>
+            <button className="button" onClick={mint} disabled={!account || minting || !grid}>{minting ? 'Minting…' : 'Mint NFT'}</button>
+            {txHash && (
+              <a className="button ghost" href={`${nftConfig.chain.explorer}/tx/${txHash}`} target="_blank" rel="noreferrer">View Tx</a>
+            )}
+          </div>
           {period && (
             <div className="muted">Period: {period.start} → {period.end}</div>
           )}
