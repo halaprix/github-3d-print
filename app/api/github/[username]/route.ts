@@ -63,11 +63,25 @@ export async function GET(_req: NextRequest, { params }: { params: { username: s
     grid[y].reverse();
   }
 
+  // Compute last 7-week period start/end (using original order, before reverse)
+  let last7WeeksStart: string | null = null;
+  let last7WeeksEnd: string | null = null;
+  if (cols >= 7) {
+    const startWeek = weeks[cols - 7];
+    const endWeek = weeks[cols - 1];
+    const startDay = startWeek?.contributionDays?.[0]?.date;
+    const endDay = endWeek?.contributionDays?.[endWeek?.contributionDays?.length - 1]?.date;
+    if (startDay && endDay) {
+      last7WeeksStart = startDay;
+      last7WeeksEnd = endDay;
+    }
+  }
+
   const profile = user
     ? { name: user.name ?? user.login, login: user.login, avatarUrl: user.avatarUrl as string, url: user.url as string }
     : null;
 
-  return new NextResponse(JSON.stringify({ grid, profile }), {
+  return new NextResponse(JSON.stringify({ grid, profile, last7WeeksStart, last7WeeksEnd }), {
     status: 200,
     headers: {
       'Content-Type': 'application/json',

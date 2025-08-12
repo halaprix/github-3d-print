@@ -70,7 +70,10 @@ function HomeContent() {
             <div className="title">GitHub Contributions 3D Printer</div>
             <div className="subtitle">Turn your GitHub heatmap into a 3D-printable skyline</div>
           </div>
-          <span className="pill">STL Export</span>
+          <div style={{ display:'flex', gap:10, alignItems:'center' }}>
+            <span className="pill">STL Export</span>
+            <a href="/secret" style={{ color:'#7a8aa0', textDecoration:'none', fontSize:12 }}>secret studio →</a>
+          </div>
         </div>
         <div className="card-body" style={{ display: 'grid', gap: 14 }}>
           <div className="toolbar">
