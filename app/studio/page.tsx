@@ -1,9 +1,14 @@
 "use client";
 
 import { Suspense, useEffect, useMemo, useState } from 'react';
+import { createWalletClient, custom, getContract, parseAbi } from 'viem';
 import { nftConfig } from '@/lib/nftConfig';
+import { PRESET_PALETTES as LIB_PRESETS } from '@/lib/palettes';
+import { deriveParams, quantizeToNibbles, encodeTokenIdFromComponents, buildGridSvg } from '@/lib/nftRender';
 
 type Profile = { login: string; name: string; avatarUrl: string };
+
+// deriveParams now imported from shared renderer
 
 export default function StudioPage() {
 	return (
@@ -18,6 +23,7 @@ function StudioInner() {
 	const [grid, setGrid] = useState<number[][] | null>(null);
 	const [period, setPeriod] = useState<{ start: string; end: string } | null>(null);
 	const [fetchError, setFetchError] = useState<string | null>(null);
+	const [activeUser, setActiveUser] = useState<string | null>(null);
 	const [account, setAccount] = useState<string | null>(null);
 	const [minting, setMinting] = useState(false);
 	const [txHash, setTxHash] = useState<string | null>(null);
@@ -27,15 +33,9 @@ function StudioInner() {
 			const r = await fetch('/api/auth/me', { cache: 'no-store' });
 			if (!r.ok) return;
 			const m = await r.json();
-			// surface oauth errors from callback if present
-			const err = document.cookie.split('; ').find((v)=>v.startsWith('gh_oauth_error='));
-			if (err) {
-				try { console.error('oauth_error', JSON.parse(atob(err.split('=')[1]))); } catch {}
-				// clear the error cookie client-side
-				document.cookie = 'gh_oauth_error=; Max-Age=0; Path=/';
-			}
 			if (m?.login) {
 				setProfile({ login: m.login, name: m.name || m.login, avatarUrl: m.avatarUrl || '' });
+				setActiveUser(m.login);
 				await fetchUserData(m.login);
 			}
 		})();
@@ -67,36 +67,12 @@ function StudioInner() {
 	}
 
 	const svg = useMemo(() => {
-		if (!grid) return '';
-		const rows = 7, cols = 7;
-		const cell = 40; const gap = 6; const bg = '#0a0f1a';
-		const width = cols * cell + (cols - 1) * gap;
-		const height = rows * cell + (rows - 1) * gap;
-		const max = Math.max(...grid.flat());
-		const palette = ['#0a0f1a', '#00E5FF', '#00FFA3', '#F5D300', '#FF2079'];
-		const colorFor = (v: number) => {
-			if (max <= 0) return palette[1];
-			const t = v / max;
-			const stops = palette.slice(1);
-			const idx = Math.min(stops.length - 1, Math.floor(t * stops.length));
-			return stops[idx];
-		};
-		const inset = Math.max(1, Math.floor(cell * 0.12));
-		const shapes: string[] = [];
-		for (let y = 0; y < rows; y++) {
-			for (let x = 0; x < cols; x++) {
-				const vx = x * (cell + gap);
-				const vy = y * (cell + gap);
-				const val = grid[y][x] || 0;
-				const cx = vx + cell / 2;
-				const cy = vy + cell / 2;
-				const r = Math.max(1, cell / 2 - inset);
-				const fill = val === 0 ? palette[0] : colorFor(val);
-				shapes.push(`<circle cx="${cx}" cy="${cy}" r="${r}" fill="${fill}"/>`);
-			}
-		}
-		return `<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"${width}\" height=\"${height}\" viewBox=\"0 0 ${width} ${height}\">\n<rect x=\"0\" y=\"0\" width=\"${width}\" height=\"${height}\" fill=\"${bg}\"/>\n${shapes.join('\n')}\n</svg>`;
-	}, [grid]);
+		if (!grid || !activeUser) return '';
+		const d = deriveParams(activeUser, period);
+		const palette = LIB_PRESETS[d.presetIndex]?.colors ?? LIB_PRESETS[0].colors;
+		const nibbles = quantizeToNibbles(grid);
+		return buildGridSvg(nibbles, palette, d.shapeIndex);
+	}, [grid, activeUser, period]);
 
 	function downloadSvg() {
 		if (!svg) return;
@@ -117,18 +93,29 @@ function StudioInner() {
 	}
 
 	async function mint() {
-		if (!account) return;
-		setMinting(true);
-		setTxHash(null);
 		try {
-			const res = await fetch('/api/mint/github', {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ to: account })
+			const eth = (window as any).ethereum;
+			if (!eth) return alert('No wallet');
+			if (!activeUser || !grid) return alert('No preview ready');
+			const d = deriveParams(activeUser, period);
+			const nibbles = quantizeToNibbles(grid);
+			const id = encodeTokenIdFromComponents(nibbles, d.shapeIndex, d.presetIndex, d.contextHash);
+			setMinting(true);
+			setTxHash(null);
+			const client = createWalletClient({
+				chain: {
+					id: nftConfig.chain.id,
+					name: nftConfig.chain.name,
+					nativeCurrency: { name: 'ETH', symbol: 'ETH', decimals: 18 },
+					rpcUrls: { default: { http: [nftConfig.chain.rpcUrl] } }
+				} as any,
+				transport: custom(eth)
 			});
-			const json = await res.json();
-			if (!res.ok) throw new Error(json?.error || 'Mint failed');
-			setTxHash(json.txHash || null);
+			const [from] = await client.requestAddresses();
+			const abi = parseAbi(['function publicMintDeterministic(uint256 tokenId) public returns (uint256)']);
+			const contract = getContract({ address: nftConfig.contractAddress as `0x${string}`, abi, client });
+			const hash = await contract.write.publicMintDeterministic([id], { account: from, chain: client.chain });
+			setTxHash(hash);
 		} catch (e: any) {
 			alert(e?.message || String(e));
 		} finally {
@@ -141,7 +128,7 @@ function StudioInner() {
 			<section className="card">
 				<div className="card-header">
 					<div className="title">Studio</div>
-					<span className="pill">SVG + Mint</span>
+					<span className="pill">Preview + Mint</span>
 				</div>
 				<div className="card-body" style={{ display: 'grid', gap: 12 }}>
 					{!profile ? (
