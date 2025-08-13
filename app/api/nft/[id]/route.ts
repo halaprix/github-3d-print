@@ -16,7 +16,7 @@ export async function GET(_req: NextRequest, { params }: { params: { id: string 
   const svg = buildGridSvg(grid, palette, shapeIndex);
   const imageB64 = Buffer.from(svg, 'utf8').toString('base64');
   const image = `data:image/svg+xml;base64,${imageB64}`;
-  const name = `GitHub 3D Print #${idStr}`;
+  const name = `Proof of Work Squares #${idStr}`;
   const metadata = {
     name,
     description: 'Deterministic SVG NFT for GitHub 3D Print. Token ID encodes grid, shape, and palette.',
