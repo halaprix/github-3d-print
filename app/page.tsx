@@ -4,7 +4,6 @@ import { Suspense, useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { Viewer } from '@/components/Viewer';
 import { nftConfig } from '@/lib/nftConfig';
-import { createPublicClient, http, parseAbiItem } from 'viem';
 
 export default function HomePage() {
   return (
@@ -69,26 +68,17 @@ function HomeContent() {
   useEffect(() => {
     (async () => {
       try {
-        if (!/^0x[0-9a-fA-F]{40}$/.test(nftConfig.contractAddress)) return;
-        const client = createPublicClient({ chain: { id: nftConfig.chain.id, name: nftConfig.chain.name, nativeCurrency: { name: 'ETH', symbol: 'ETH', decimals: 18 }, rpcUrls: { default: { http: [nftConfig.chain.rpcUrl] } } } as any, transport: http(nftConfig.chain.rpcUrl) });
-        const current = await client.getBlockNumber();
-        const from = nftConfig.deployBlock > 0 ? BigInt(nftConfig.deployBlock) : (current > 50000n ? current - 50000n : 0n);
-        const event = parseAbiItem('event Transfer(address indexed from, address indexed to, uint256 indexed tokenId)');
-        const logs = await client.getLogs({ address: nftConfig.contractAddress as `0x${string}`, event, fromBlock: from, toBlock: current });
-        const minted = logs
-          .map((l) => (l as any).args?.tokenId as bigint)
-          .filter((id): id is bigint => typeof id === 'bigint')
-          .slice(-24)
-          .reverse()
-          .map((id) => ({ id }));
+        const res = await fetch('/api/nft/recent');
+        if (!res.ok) return;
+        const json = await res.json();
+        const ids: string[] = json.tokenIds || [];
+        const minted = ids.slice(0, 24).map((s) => ({ id: BigInt(s) }));
         setLatest(minted);
-        // Preload preview images via local metadata endpoint
-        const metas = await Promise.all(minted.slice(0, 24).map(async (m) => {
-          const res = await fetch(`/api/nft/${m.id.toString()}`);
-          if (!res.ok) return [m.id.toString(), ''] as const;
-          const json = await res.json();
-          const src: string = json.image ?? '';
-          return [m.id.toString(), src] as const;
+        const metas = await Promise.all(minted.map(async (m) => {
+          const r = await fetch(`/api/nft/${m.id.toString()}`);
+          if (!r.ok) return [m.id.toString(), ''] as const;
+          const j = await r.json();
+          return [m.id.toString(), j.image || ''] as const;
         }));
         const map: Record<string, string> = {};
         for (const [k, v] of metas) if (v) map[k] = v;
