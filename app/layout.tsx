@@ -2,12 +2,15 @@ import './globals.css';
 import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
 import { Analytics } from "@vercel/analytics/next"
+import { getOpenSeaCollectionUrl } from '@/lib/opensea';
+import dynamic from 'next/dynamic';
+const WalletConnect = dynamic(() => import('@/components/WalletConnect'), { ssr: false });
 
 const inter = Inter({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
-  title: 'Proof of Work Squares',
-  description: 'Degen on-chain art from your GitHub heatmap. Mint deterministic SVGs and generate 3D-printable skylines.'
+  title: 'GridGit',
+  description: 'On-chain art from your GitHub heatmap. Mint deterministic SVGs and generate 3D-printable skylines.'
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
@@ -16,14 +19,15 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body className={inter.className}>
         <header className="navbar">
           <div className="nav-inner">
-            <a href="/" className="brand">GitHub 3D Print</a>
+            <a href="/" className="brand">GridGit</a>
             <div className="nav-search">
               <input className="search" placeholder="Search items, users, collections" />
             </div>
             <nav className="nav-links">
               <a href="/" className="nav-link">Explore</a>
-              <a href="/secret" className="nav-link">Studio</a>
-              <a href="https://opensea.io/collection/" target="_blank" rel="noreferrer" className="nav-link">OpenSea</a>
+              <a href="/studio" className="nav-link">Studio</a>
+              <a href={getOpenSeaCollectionUrl()} target="_blank" rel="noreferrer" className="nav-link">OpenSea</a>
+              <WalletConnect />
             </nav>
           </div>
         </header>

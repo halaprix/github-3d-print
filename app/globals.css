@@ -1,3 +1,7 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
 *{ box-sizing: border-box; }
 html{ height:100%; background:radial-gradient(80% 100% at 50% 0%, #0f1b2b 0%, #0b0f14 70%); background-attachment: fixed; background-repeat: no-repeat; }
 body{ margin:0; padding:0; min-height:100dvh; color:#e3eefc; background: transparent; display:flex; flex-direction: column; }
