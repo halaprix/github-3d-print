@@ -145,19 +145,54 @@ function StudioInner() {
 					{fetchError && <span style={{ color: 'crimson' }}>{fetchError}</span>}
 					<div style={{ display:'flex', gap:8, alignItems:'center', flexWrap:'wrap' as const }}>
 						<button className="button" onClick={connectWallet} disabled={!!account}>{account ? `Connected: ${account.slice(0,6)}…${account.slice(-4)}` : 'Connect Wallet'}</button>
-						<button className="button" onClick={mint} disabled={!account || minting || !grid || !profile}>{minting ? 'Minting…' : 'Mint NFT'}</button>
-						{txHash && (
-							<a className="button ghost" href={`${nftConfig.chain.explorer}/tx/${txHash}`} target="_blank" rel="noreferrer">View Tx</a>
-						)}
 						<button className="button" onClick={downloadSvg} disabled={!svg}>Download SVG</button>
 						{period && (<div className="muted">Period: {period.start} → {period.end}</div>)}
 					</div>
 				</div>
 			</section>
+			{/* Central Mint Section */}
+			{profile && grid && (
+				<section className="card">
+					<div className="card-body" style={{ display: 'grid', gap: 16, alignItems: 'center', textAlign: 'center' as const }}>
+						<div>
+							<h3 style={{ margin: 0, fontSize: '1.5rem', fontWeight: 600 }}>Ready to Mint?</h3>
+							<p className="muted" style={{ margin: '8px 0 0 0' }}>Your NFT preview is ready. Connect your wallet and mint to the blockchain.</p>
+						</div>
+						<div style={{ display: 'flex', gap: 12, justifyContent: 'center', alignItems: 'center', flexWrap: 'wrap' as const }}>
+							{!account ? (
+								<button className="button" onClick={connectWallet} style={{ fontSize: '1.1rem', padding: '12px 24px' }}>
+									Connect Wallet to Mint
+								</button>
+							) : (
+								<button 
+									className="button" 
+									onClick={mint} 
+									disabled={minting || !grid || !profile}
+									style={{ 
+										fontSize: '1.2rem', 
+										padding: '16px 32px',
+										background: 'linear-gradient(135deg, #ff2db3, #8a2be2)',
+										borderColor: '#6e14bf',
+										color: 'white',
+										fontWeight: 600
+									}}
+								>
+									{minting ? 'Minting...' : '🚀 Mint NFT'}
+								</button>
+							)}
+							{txHash && (
+								<a className="button ghost" href={`${nftConfig.chain.explorer}/tx/${txHash}`} target="_blank" rel="noreferrer">
+									View Transaction
+								</a>
+							)}
+						</div>
+					</div>
+				</section>
+			)}
 			<section className="card">
 				<div className="card-body" style={{ overflow: 'auto' }}>
 					{svg ? (
-						<div dangerouslySetInnerHTML={{ __html: svg }} />
+						<div dangerouslySetInnerHTML={{ __html: svg }} style={{ display: 'flex', justifyContent: 'center' }} />
 					) : (
 						<div className="muted">Sign in with GitHub to preview</div>
 					)}
