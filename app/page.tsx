@@ -53,6 +53,9 @@ function HomeContent() {
           <div className="muted" style={{ lineHeight: 1.5 }}>
             GridGit encodes your last 7 weeks of GitHub contributions into a 7×7 grid. Shape and palette are derived deterministically from your username and period. The SVG is rendered fully on-chain; token ID encodes the grid, shape and palette. Connect your wallet above and mint in the Studio.
           </div>
+          <div>
+            <a href="/studio" className="button" style={{ background:'linear-gradient(180deg,#ff2db3,#8a2be2)', borderColor:'#6e14bf' }}>Mint your GridGit →</a>
+          </div>
         </div>
       </section>
 
