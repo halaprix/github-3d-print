@@ -27,6 +27,13 @@ function StudioInner() {
 			const r = await fetch('/api/auth/me', { cache: 'no-store' });
 			if (!r.ok) return;
 			const m = await r.json();
+			// surface oauth errors from callback if present
+			const err = document.cookie.split('; ').find((v)=>v.startsWith('gh_oauth_error='));
+			if (err) {
+				try { console.error('oauth_error', JSON.parse(atob(err.split('=')[1]))); } catch {}
+				// clear the error cookie client-side
+				document.cookie = 'gh_oauth_error=; Max-Age=0; Path=/';
+			}
 			if (m?.login) {
 				setProfile({ login: m.login, name: m.name || m.login, avatarUrl: m.avatarUrl || '' });
 				await fetchUserData(m.login);
