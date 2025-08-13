@@ -46,6 +46,7 @@ export default function SecretStudioPage() {
 function StudioInner() {
   const sp = useSearchParams();
   const [user, setUser] = useState(sp.get('user') || '');
+  const [activeUser, setActiveUser] = useState<string | null>(null);
   const [grid, setGrid] = useState<number[][] | null>(null);
   const [bg, setBg] = useState(sp.get('bg') || '#0a0f1a');
   const [cell, setCell] = useState(Number(sp.get('cell') || 40));
@@ -55,25 +56,58 @@ function StudioInner() {
   const [shape, setShape] = useState<'rounded' | 'pixel' | 'circle' | 'diamond' | 'hex' | 'triangle'>('rounded');
   const [derived, setDerived] = useState<{ shapeIndex: number; presetIndex: number; contextHash: number } | null>(null);
   const [period, setPeriod] = useState<{ start: string; end: string } | null>(null);
+  const [fetchError, setFetchError] = useState<string | null>(null);
 
   useEffect(() => {
     (async () => {
-      const u = sp.get('user') || user;
-      if (!u) return;
-      const res = await fetch(`/api/github/${encodeURIComponent(u)}`);
-      if (!res.ok) return;
-      const json = await res.json();
-      const full = json.grid as number[][];
-      const cols = full[0]?.length ?? 0;
-      if (cols >= 7) {
-        const seven = full.map((row) => row.slice(cols - 7, cols)).slice(0, 7);
-        setGrid(seven);
-      }
-      if (json.last7WeeksStart && json.last7WeeksEnd) {
-        setPeriod({ start: json.last7WeeksStart, end: json.last7WeeksEnd });
-      }
+      const pre = sp.get('user');
+      if (!pre || grid) return;
+      await fetchUserData(pre);
     })();
-  }, [sp, user]);
+  }, [sp, grid]);
+
+  async function fetchUserData(u: string) {
+    if (!u) return;
+    setFetchError(null);
+    let res: Response;
+    try {
+      res = await fetch(`/api/github/${encodeURIComponent(u)}`);
+    } catch {
+      setFetchStateInvalid('Network error');
+      return;
+    }
+    if (!res.ok) {
+      setFetchStateInvalid('User not found');
+      return;
+    }
+    const json = await res.json();
+    const full = json.grid as number[][];
+    const cols = full[0]?.length ?? 0;
+    const weekStart: string[] = json.weekStartDates || [];
+    const weekEnd: string[] = json.weekEndDates || [];
+    if (Array.isArray(full) && cols >= 7) {
+      const startIndex = 0; // newest at 0
+      const endIndex = startIndex + 6;
+      const seven = full.map((row) => row.slice(startIndex, endIndex + 1)).slice(0, 7);
+      setGrid(seven);
+      const startDate = weekStart[endIndex] || null;
+      const endDate = weekEnd[startIndex] || null;
+      if (startDate && endDate) setPeriod({ start: startDate, end: endDate });
+      setActiveUser(u);
+      setFetchError(null);
+    }
+    else {
+      setFetchStateInvalid('No contributions to build 7 weeks');
+    }
+  }
+
+  function setFetchStateInvalid(message: string) {
+    setFetchError(message);
+    setGrid(null);
+    setPeriod(null);
+    setDerived(null);
+    setActiveUser(null);
+  }
 
   const svg = useMemo(() => {
     if (!grid) return '';
@@ -158,6 +192,36 @@ function StudioInner() {
     URL.revokeObjectURL(url);
   }
 
+  function shiftPeriod(direction: -1 | 1) {
+    // shift by 7 columns if we have the backing full grid in URL cache; for now, ask server each time
+    (async () => {
+      const u = user;
+      if (!u) return;
+      const res = await fetch(`/api/github/${encodeURIComponent(u)}`);
+      if (!res.ok) return;
+      const json = await res.json();
+      const full = json.grid as number[][];
+      const weekStart: string[] = json.weekStartDates || [];
+      const weekEnd: string[] = json.weekEndDates || [];
+      const cols = full[0]?.length ?? 0;
+      if (cols < 7) return;
+      // find current window index
+      // current window is [i..i+6] with start date = weekStart[i+6], end date = weekEnd[i]
+      const currentStartIndex = weekStart.findIndex((d: string) => d === period?.start);
+      // default to latest window if unknown
+      let i = currentStartIndex >= 0 ? currentStartIndex - 6 : 0; // derive i from start date index
+      // direction: -1 → older, +1 → newer given arrays reversed (newest at 0)
+      i = i + (direction === -1 ? 1 : -1);
+      i = Math.max(0, Math.min(cols - 7, i));
+      const endIndex = i + 6;
+      const seven = full.map((row) => row.slice(i, endIndex + 1)).slice(0, 7);
+      setGrid(seven);
+      const startDate = weekStart[endIndex] || null;
+      const endDate = weekEnd[i] || null;
+      if (startDate && endDate) setPeriod({ start: startDate, end: endDate });
+    })();
+  }
+
   function updatePalette(index: number, value: string) {
     setPalette((p) => {
       const next = [...p];
@@ -168,9 +232,9 @@ function StudioInner() {
   function onPresetChange(_id: string) { /* locked by user-period */ }
 
   const nftId = useMemo(() => {
-    if (!grid) return '';
+    if (!grid || !activeUser) return '';
     // Lock shape and preset from user+period
-    const d = deriveParams(user, period);
+    const d = deriveParams(activeUser, period);
     setDerived(d);
     const lockedPreset = LIB_PRESETS[d.presetIndex]?.colors || LIB_PRESETS[0].colors;
     if (palette.join(',') !== lockedPreset.join(',')) setPalette(lockedPreset);
@@ -202,7 +266,7 @@ function StudioInner() {
     // version 1 in bits 234..241
     id |= 1n << 234n;
     return `0x${id.toString(16)}`;
-  }, [grid, user, period]);
+  }, [grid, activeUser, period]);
 
   const [account, setAccount] = useState<string | null>(null);
   const [txHash, setTxHash] = useState<string | null>(null);
@@ -259,43 +323,23 @@ function StudioInner() {
         <div className="card-body" style={{ display: 'grid', gap: 12 }}>
           <div className="toolbar" style={{ flexWrap: 'wrap' as const }}>
             <input className="input" placeholder="github user" value={user} onChange={(e)=>setUser(e.target.value)} />
-            <label className="muted">Cell
-              <input className="input" type="number" value={cell} onChange={(e)=>setCell(Number(e.target.value||0))} style={{ width:100, marginLeft:8 }} />
-            </label>
-            <label className="muted">Gap
-              <input className="input" type="number" value={gap} onChange={(e)=>setGap(Number(e.target.value||0))} style={{ width:100, marginLeft:8 }} />
-            </label>
-            <label className="muted">BG
-              <input type="color" value={bg} onChange={(e)=>setBg(e.target.value)} style={{ width:48, height:36, background:'transparent', border:'1px solid #1b2633', borderRadius:8, marginLeft:8 }} />
-            </label>
-            <div className="muted" style={{ display:'flex', gap:8, alignItems:'center' }}>Palette:
-              {palette.map((c, i) => (
-                <input key={i} type="color" value={c} onChange={(e)=>updatePalette(i, e.target.value)} style={{ width:36, height:36, background:'transparent', border:'1px solid #1b2633', borderRadius:8 }} />
-              ))}
+            <button className="button" onClick={()=>fetchUserData(user)} disabled={!user}>Fetch</button>
+            {fetchError && <span style={{ color: 'crimson' }}>{fetchError}</span>}
+            <div className="muted" style={{ display:'flex', gap:8, alignItems:'center' }}>
+              Period:
+              <button className="button" onClick={()=>shiftPeriod(-1)}>&lt;</button>
+              <span>{period ? `${period.start} → ${period.end}` : '—'}</span>
+              <button className="button" onClick={()=>shiftPeriod(1)}>&gt;</button>
             </div>
-            <label className="muted">Preset
-              <select className="input" value={preset} onChange={(e)=>onPresetChange(e.target.value)} style={{ width:200, marginLeft:8 }}>
-                {PRESET_PALETTES.map(p => (
-                  <option key={p.id} value={p.id}>{p.name}</option>
-                ))}
-              </select>
-            </label>
-            <label className="muted">Shape
-              <select className="input" value={shape} onChange={(e)=>setShape(e.target.value as any)} style={{ width:180, marginLeft:8 }}>
-                <option value="rounded">Rounded squares</option>
-                <option value="pixel">Pixels</option>
-                <option value="circle">Circles</option>
-                <option value="diamond">Diamonds</option>
-                <option value="hex">Hexagons</option>
-                <option value="triangle">Triangles</option>
-              </select>
-            </label>
             <button className="button" onClick={downloadSvg}>Download SVG</button>
           </div>
           <div className="muted">NFT ID (palette + shape + user + period): {nftId}</div>
+          {activeUser && (
+            <div className="muted">Locked to user: @{activeUser}</div>
+          )}
           <div style={{ display:'flex', gap:8, alignItems:'center', flexWrap:'wrap' as const }}>
             <button className="button" onClick={connectWallet} disabled={!!account}>{account ? `Connected: ${account.slice(0,6)}…${account.slice(-4)}` : 'Connect Wallet'}</button>
-            <button className="button" onClick={mint} disabled={!account || minting || !grid}>{minting ? 'Minting…' : 'Mint NFT'}</button>
+            <button className="button" onClick={mint} disabled={!account || minting || !grid || !activeUser || user !== activeUser}>{minting ? 'Minting…' : (user !== activeUser ? 'Fetch to Mint' : 'Mint NFT')}</button>
             {txHash && (
               <a className="button ghost" href={`${nftConfig.chain.explorer}/tx/${txHash}`} target="_blank" rel="noreferrer">View Tx</a>
             )}

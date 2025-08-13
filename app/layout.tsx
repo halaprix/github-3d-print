@@ -6,8 +6,8 @@ import { Analytics } from "@vercel/analytics/next"
 const inter = Inter({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
-  title: 'GitHub Contributions 3D Printer',
-  description: 'Generate a 3D-printable STL from your GitHub contributions heatmap.'
+  title: 'Proof of Work Squares',
+  description: 'Degen on-chain art from your GitHub heatmap. Mint deterministic SVGs and generate 3D-printable skylines.'
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
