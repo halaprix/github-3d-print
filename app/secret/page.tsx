@@ -35,13 +35,7 @@ function deriveParams(user: string, period: { start: string; end: string } | nul
   return { shapeIndex, presetIndex, contextHash: hash };
 }
 
-export default function SecretStudioPage() {
-  return (
-    <Suspense fallback={null}>
-      <StudioInner />
-    </Suspense>
-  );
-}
+export default function SecretStudioPage() { return null; }
 
 function StudioInner() {
   const sp = useSearchParams();

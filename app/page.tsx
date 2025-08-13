@@ -1,9 +1,8 @@
 "use client";
 
 import { Suspense, useEffect, useState } from 'react';
-import { useSearchParams } from 'next/navigation';
-import { Viewer } from '@/components/Viewer';
 import { nftConfig } from '@/lib/nftConfig';
+import { getOpenSeaAssetUrl, getOpenSeaCollectionUrl } from '@/lib/opensea';
 
 export default function HomePage() {
   return (
@@ -14,56 +13,8 @@ export default function HomePage() {
 }
 
 function HomeContent() {
-  const searchParams = useSearchParams();
-  const [username, setUsername] = useState('');
-  const [data, setData] = useState<number[][] | null>(null);
-  const [shortData, setShortData] = useState<number[][] | null>(null);
-  const [activeTab, setActiveTab] = useState<'full' | '7day'>('full');
-  const [profile, setProfile] = useState<{ name: string; login: string; avatarUrl: string; url: string } | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [latest, setLatest] = useState<Array<{ id: bigint }>>([]);
   const [previews, setPreviews] = useState<Record<string, string>>({});
-
-  async function fetchFor(name: string) {
-    setLoading(true);
-    setError(null);
-    try {
-      const res = await fetch(`/api/github/${encodeURIComponent(name)}`);
-      if (!res.ok) {
-        throw new Error(`Failed: ${res.status}`);
-      }
-      const json = await res.json();
-      const full = json.grid as number[][];
-      setData(full);
-      // Build 7x7 from last 7 columns and 7 rows only (Mon..Sun as provided order)
-      const cols = full[0]?.length ?? 0;
-      if (cols >= 7) {
-        const slice = full.map((row) => row.slice(cols - 7, cols)).slice(0, 7);
-        setShortData(slice);
-      } else {
-        setShortData(null);
-      }
-      setProfile(json.profile ?? null);
-    } catch (e: any) {
-      setError(e.message);
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  async function handleFetch() {
-    if (!username) return;
-    await fetchFor(username);
-  }
-
-  useEffect(() => {
-    const prefill = searchParams.get('user');
-    if (prefill && !data && !loading) {
-      setUsername(prefill);
-      fetchFor(prefill);
-    }
-  }, [searchParams]);
 
   useEffect(() => {
     (async () => {
@@ -93,34 +44,15 @@ function HomeContent() {
       <section className="card">
         <div className="card-header">
           <div style={{ display:'grid', gap:6 }}>
-            <div className="title">Explore</div>
-            <div className="subtitle">On-chain squares from GitHub activity</div>
+            <div className="title">GridGit</div>
+            <div className="subtitle">On-chain squares from your GitHub activity</div>
           </div>
-          <div style={{ display:'flex', gap:10, alignItems:'center' }}>
-            <a href="/secret" className="button">Open Studio →</a>
-            <a href="https://opensea.io/" target="_blank" rel="noreferrer" className="pill" style={{ textDecoration:'none' }}>View Collection</a>
-          </div>
+          <div />
         </div>
-        <div className="card-body" style={{ display: 'grid', gap: 14 }}>
-          <div className="toolbar" style={{ justifyContent:'space-between', flexWrap:'wrap' as const }}>
-            <div style={{ display:'flex', gap:10, alignItems:'center' }}>
-              <input className="input" placeholder="preview a github username" value={username} onChange={(e) => setUsername(e.target.value)} />
-              <button className={`button ${loading ? 'loading' : ''}`} onClick={handleFetch} disabled={!username || loading}>
-                {loading ? <span className="spinner" /> : null}
-                {loading ? 'Fetching' : 'Preview'}
-              </button>
-              {error && <span style={{ color: 'crimson' }}>{error}</span>}
-            </div>
-            <a href="/secret" className="button" style={{ background:'linear-gradient(180deg,#ff2db3,#8a2be2)', borderColor:'#6e14bf' }}>Mint →</a>
+        <div className="card-body" style={{ display: 'grid', gap: 10 }}>
+          <div className="muted" style={{ lineHeight: 1.5 }}>
+            GridGit encodes your last 7 weeks of GitHub contributions into a 7×7 grid. Shape and palette are derived deterministically from your username and period. The SVG is rendered fully on-chain; token ID encodes the grid, shape and palette. Connect your wallet above and mint in the Studio.
           </div>
-          {profile && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-              <img src={profile.avatarUrl} alt={profile.login} width={40} height={40} style={{ borderRadius: '50%' }} />
-              <a href={profile.url} target="_blank" rel="noreferrer" style={{ color: '#e3eefc' }}>
-                {profile.name} (@{profile.login})
-              </a>
-            </div>
-          )}
         </div>
       </section>
 
@@ -132,40 +64,22 @@ function HomeContent() {
               <article className="nft-card" key={i}>
                 <div className="nft-media">
                   {latest.length && previews[item.id.toString()] ? (
-                    <img alt={`Token ${item.id.toString()}`} src={previews[item.id.toString()]} style={{ width:'100%', height:'100%', objectFit:'cover' }} />
+                    <a href={getOpenSeaAssetUrl(item.id.toString())} target="_blank" rel="noreferrer">
+                      <img alt={`Token ${item.id.toString()}`} src={previews[item.id.toString()]} style={{ width:'100%', height:'100%', objectFit:'cover' }} />
+                    </a>
                   ) : (
-                    <MiniSvg seed={i} />
+                    <div className="animate-pulse" style={{ width:'100%', height:'100%', display:'grid', placeItems:'center' }}>
+                      <MiniSvg seed={i} />
+                    </div>
                   )}
                 </div>
                 <div className="nft-body">
-                  <div className="nft-title">GitHub 3D Print #{item.id.toString()}</div>
+                  <div className="nft-title">GridGit #{item.id.toString()}</div>
                   <div className="nft-sub">On-chain SVG</div>
                 </div>
               </article>
             ))}
           </div>
-        </div>
-      </section>
-
-      {/* Live preview */}
-      <section className="card">
-        <div className="card-body">
-          {data ? (
-            <div style={{ display: 'grid', gap: 12 }}>
-              <div className="tabs">
-                <button className={`tab ${activeTab === 'full' ? 'active' : ''}`} onClick={() => setActiveTab('full')}>Full view</button>
-                <button className={`tab ${activeTab === '7day' ? 'active' : ''}`} onClick={() => setActiveTab('7day')}>Last 7 weeks</button>
-              </div>
-              {activeTab === 'full' && (
-                <Viewer grid={data} label={profile ? `${profile.name} (@${profile.login})` : undefined} mode="full" />
-              )}
-              {activeTab === '7day' && shortData && (
-                <Viewer grid={shortData} label={profile ? `${profile.name} (@${profile.login})` : undefined} mode="compact" />
-              )}
-            </div>
-          ) : (
-            <div className="muted">Enter a username and click Preview to render the model. Or jump straight to the Studio.</div>
-          )}
         </div>
       </section>
     </main>
