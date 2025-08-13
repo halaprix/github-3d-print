@@ -18,6 +18,23 @@ const PRESET_PALETTES: Palette[] = [
 ];
 function defaultColors() { return PRESET_PALETTES[0].colors; }
 
+function fnv1a32(str: string): number {
+  let h = 0x811c9dc5;
+  for (let i = 0; i < str.length; i++) {
+    h ^= str.charCodeAt(i);
+    h = Math.imul(h, 0x01000193);
+  }
+  return h >>> 0;
+}
+
+function deriveParams(user: string, period: { start: string; end: string } | null): { shapeIndex: number; presetIndex: number; contextHash: number } {
+  const key = `${user || ''}|${period?.start || ''}|${period?.end || ''}`;
+  const hash = fnv1a32(key);
+  const shapeIndex = hash & 0x7; // 0..7
+  const presetIndex = (hash >>> 3) % Math.max(1, LIB_PRESETS.length);
+  return { shapeIndex, presetIndex, contextHash: hash };
+}
+
 export default function SecretStudioPage() {
   return (
     <Suspense fallback={null}>
@@ -36,6 +53,7 @@ function StudioInner() {
   const [palette, setPalette] = useState<string[]>(defaultColors());
   const [preset, setPreset] = useState<string>('neon-city');
   const [shape, setShape] = useState<'rounded' | 'pixel' | 'circle' | 'diamond' | 'hex' | 'triangle'>('rounded');
+  const [derived, setDerived] = useState<{ shapeIndex: number; presetIndex: number; contextHash: number } | null>(null);
   const [period, setPeriod] = useState<{ start: string; end: string } | null>(null);
 
   useEffect(() => {
@@ -147,14 +165,18 @@ function StudioInner() {
       return next;
     });
   }
-  function onPresetChange(id: string) {
-    setPreset(id);
-    const found = PRESET_PALETTES.find((p) => p.name.toLowerCase().includes(id.replace('-', ' ')));
-    if (found) setPalette(found.colors);
-  }
+  function onPresetChange(_id: string) { /* locked by user-period */ }
 
   const nftId = useMemo(() => {
     if (!grid) return '';
+    // Lock shape and preset from user+period
+    const d = deriveParams(user, period);
+    setDerived(d);
+    const lockedPreset = LIB_PRESETS[d.presetIndex]?.colors || LIB_PRESETS[0].colors;
+    if (palette.join(',') !== lockedPreset.join(',')) setPalette(lockedPreset);
+    const shapeNames: Array<typeof shape> = ['rounded','pixel','circle','diamond','hex','triangle'];
+    const lockedShape = shapeNames[d.shapeIndex] ?? 'rounded';
+    if (shape !== lockedShape) setShape(lockedShape);
     // Encode 7x7 intensities (normalize to 0..15) -> 49 nibbles => bits 0..195
     let id = 0n;
     const rows = 7, cols = 7;
@@ -172,16 +194,15 @@ function StudioInner() {
       id |= BigInt(flat[i] & 0xf) << BigInt(i * 4);
     }
     // shape bits 196..198
-    const shapeIndex = ['rounded', 'pixel', 'circle', 'diamond', 'hex', 'triangle'].indexOf(shape);
-    id |= BigInt(shapeIndex & 0x7) << 196n;
-    // preset id 199..201 using PRESET_PALETTES index
-    // map to library preset index (names match order)
-    const presetIndex = Math.max(0, Math.min(7, LIB_PRESETS.findIndex((p) => p.colors.join(',') === palette.join(','))));
-    id |= BigInt(presetIndex & 0x7) << 199n;
+    id |= BigInt(d.shapeIndex & 0x7) << 196n;
+    // preset id 199..201
+    id |= BigInt(d.presetIndex & 0x7) << 199n;
+    // context hash 202..233
+    id |= BigInt(d.contextHash >>> 0) << 202n;
     // version 1 in bits 234..241
     id |= 1n << 234n;
     return `0x${id.toString(16)}`;
-  }, [grid, palette, shape]);
+  }, [grid, user, period]);
 
   const [account, setAccount] = useState<string | null>(null);
   const [txHash, setTxHash] = useState<string | null>(null);

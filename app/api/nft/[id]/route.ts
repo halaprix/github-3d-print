@@ -11,7 +11,7 @@ export async function GET(_req: NextRequest, { params }: { params: { id: string 
   const tokenId = BigInt(idStr);
   const decoded = decodeTokenId(tokenId);
   if (!decoded) return NextResponse.json({ error: 'Malformed token id' }, { status: 400 });
-  const { grid, shapeIndex, presetIndex } = decoded;
+  const { grid, shapeIndex, presetIndex, contextHash } = decoded;
   const palette = PRESET_PALETTES[presetIndex]?.colors ?? PRESET_PALETTES[0].colors;
   const svg = buildGridSvg(grid, palette, shapeIndex);
   const imageB64 = Buffer.from(svg, 'utf8').toString('base64');
@@ -27,7 +27,8 @@ export async function GET(_req: NextRequest, { params }: { params: { id: string 
       { trait_type: 'Encoding', value: 'base64' },
       { trait_type: 'Embedded', value: 'true' },
       { trait_type: 'Shape', value: ['rounded','pixel','circle','diamond','hex','triangle'][shapeIndex] ?? 'rounded' },
-      { trait_type: 'Palette', value: PRESET_PALETTES[presetIndex]?.name ?? 'Unknown' }
+      { trait_type: 'Palette', value: PRESET_PALETTES[presetIndex]?.name ?? 'Unknown' },
+      { display_type: 'number', trait_type: 'ContextHash', value: Number(contextHash) }
     ]
   } as const;
 
@@ -37,11 +38,12 @@ export async function GET(_req: NextRequest, { params }: { params: { id: string 
   });
 }
 
-function decodeTokenId(id: bigint): { grid: number[][]; shapeIndex: number; presetIndex: number } | null {
+function decodeTokenId(id: bigint): { grid: number[][]; shapeIndex: number; presetIndex: number; contextHash: bigint } | null {
   const version = Number((id >> 234n) & 0xffn);
   if (version !== 1) return null;
   const shapeIndex = Number((id >> 196n) & 0x7n);
   const presetIndex = Number((id >> 199n) & 0x7n);
+  const contextHash = (id >> 202n) & 0xffffffffn;
   const flat: number[] = [];
   for (let i = 0; i < 49; i++) {
     const nibble = Number((id >> BigInt(i * 4)) & 0xfn);
@@ -49,7 +51,7 @@ function decodeTokenId(id: bigint): { grid: number[][]; shapeIndex: number; pres
   }
   const grid: number[][] = [];
   for (let y = 0; y < 7; y++) grid.push(flat.slice(y * 7, y * 7 + 7));
-  return { grid, shapeIndex, presetIndex };
+  return { grid, shapeIndex, presetIndex, contextHash };
 }
 
 function buildGridSvg(grid: number[][], palette: string[], shapeIndex: number): string {
