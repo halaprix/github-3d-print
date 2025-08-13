@@ -6,3 +6,4 @@ out/
 .env*
 SYSTEM_PROMPT.md
 .next
+.vercel

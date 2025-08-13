@@ -39,7 +39,7 @@ export async function GET(_req: NextRequest, { params }: { params: { username: s
     body: JSON.stringify({ query, variables: { login: username } }),
     next: { revalidate }
   } as RequestInit & { next: { revalidate: number } });
-
+  
   if (!resp.ok) {
     const text = await resp.text();
     return NextResponse.json({ error: 'GitHub API error', details: text }, { status: 502 });
@@ -51,8 +51,14 @@ export async function GET(_req: NextRequest, { params }: { params: { username: s
   const rows = 7;
   const cols = weeks.length;
   const grid: number[][] = Array.from({ length: rows }, () => Array.from({ length: cols }, () => 0));
+  const weekStartDates: string[] = Array.from({ length: cols }, () => '');
+  const weekEndDates: string[] = Array.from({ length: cols }, () => '');
   for (let x = 0; x < cols; x++) {
     const days = weeks[x]?.contributionDays ?? [];
+    const startDay = days[0]?.date;
+    const endDay = days[days.length - 1]?.date;
+    if (startDay) weekStartDates[x] = startDay;
+    if (endDay) weekEndDates[x] = endDay;
     for (let y = 0; y < Math.min(7, days.length); y++) {
       const color: string | undefined = days[y]?.color;
       grid[y][x] = color ? colorToHeight(color) : 0;
@@ -62,6 +68,8 @@ export async function GET(_req: NextRequest, { params }: { params: { username: s
   for (let y = 0; y < rows; y++) {
     grid[y].reverse();
   }
+  weekStartDates.reverse();
+  weekEndDates.reverse();
 
   // Compute last 7-week period start/end (using original order, before reverse)
   let last7WeeksStart: string | null = null;
@@ -81,7 +89,7 @@ export async function GET(_req: NextRequest, { params }: { params: { username: s
     ? { name: user.name ?? user.login, login: user.login, avatarUrl: user.avatarUrl as string, url: user.url as string }
     : null;
 
-  return new NextResponse(JSON.stringify({ grid, profile, last7WeeksStart, last7WeeksEnd }), {
+  return new NextResponse(JSON.stringify({ grid, profile, last7WeeksStart, last7WeeksEnd, weekStartDates, weekEndDates }), {
     status: 200,
     headers: {
       'Content-Type': 'application/json',

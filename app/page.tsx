@@ -63,31 +63,29 @@ function HomeContent() {
   }, [searchParams]);
 
   return (
-    <main className="container" style={{ display: 'grid', gap: 20, flex: 1 }}>
+    <main className="container" style={{ display: 'grid', gap: 24, flex: 1 }}>
       <section className="card">
         <div className="card-header">
-          <div>
-            <div className="title">GitHub Contributions 3D Printer</div>
-            <div className="subtitle">Turn your GitHub heatmap into a 3D-printable skyline</div>
+          <div style={{ display:'grid', gap:6 }}>
+            <div className="title">Proof of Work Squares</div>
+            <div className="subtitle">Mint deterministic on-chain SVGs from your GitHub heatmap</div>
           </div>
           <div style={{ display:'flex', gap:10, alignItems:'center' }}>
-            <span className="pill">STL Export</span>
-            <a href="/secret" style={{ color:'#7a8aa0', textDecoration:'none', fontSize:12 }}>secret studio →</a>
+            <a href="/secret" className="button">Open Studio →</a>
+            <a href="https://opensea.io/" target="_blank" rel="noreferrer" className="pill" style={{ textDecoration:'none' }}>View Collection</a>
           </div>
         </div>
         <div className="card-body" style={{ display: 'grid', gap: 14 }}>
-          <div className="toolbar">
-            <input
-              className="input"
-              placeholder="github username"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-            />
-            <button className={`button ${loading ? 'loading' : ''}`} onClick={handleFetch} disabled={!username || loading}>
-              {loading ? <span className="spinner" /> : null}
-              {loading ? 'Fetching' : 'Fetch'}
-            </button>
-            {error && <span style={{ color: 'crimson' }}>{error}</span>}
+          <div className="toolbar" style={{ justifyContent:'space-between' }}>
+            <div style={{ display:'flex', gap:10, alignItems:'center' }}>
+              <input className="input" placeholder="github username" value={username} onChange={(e) => setUsername(e.target.value)} />
+              <button className={`button ${loading ? 'loading' : ''}`} onClick={handleFetch} disabled={!username || loading}>
+                {loading ? <span className="spinner" /> : null}
+                {loading ? 'Fetching' : 'Preview'}
+              </button>
+              {error && <span style={{ color: 'crimson' }}>{error}</span>}
+            </div>
+            <a href="/secret" className="button" style={{ background:'linear-gradient(180deg,#ff2db3,#8a2be2)', borderColor:'#6e14bf' }}>Mint →</a>
           </div>
           {profile && (
             <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
@@ -106,7 +104,7 @@ function HomeContent() {
             <div style={{ display: 'grid', gap: 12 }}>
               <div className="tabs">
                 <button className={`tab ${activeTab === 'full' ? 'active' : ''}`} onClick={() => setActiveTab('full')}>Full view</button>
-                <button className={`tab ${activeTab === '7day' ? 'active' : ''}`} onClick={() => setActiveTab('7day')}>Last 7 days</button>
+                <button className={`tab ${activeTab === '7day' ? 'active' : ''}`} onClick={() => setActiveTab('7day')}>Last 7 weeks</button>
               </div>
               {activeTab === 'full' && (
                 <Viewer grid={data} label={profile ? `${profile.name} (@${profile.login})` : undefined} mode="full" />
@@ -116,7 +114,7 @@ function HomeContent() {
               )}
             </div>
           ) : (
-            <div className="muted">Enter a username and click Fetch to render the model.</div>
+            <div className="muted">Enter a username and click Preview to render the model. Or jump straight to the Studio.</div>
           )}
         </div>
       </section>
