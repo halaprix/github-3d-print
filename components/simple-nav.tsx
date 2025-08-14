@@ -7,10 +7,10 @@ export function SimpleNav() {
   const pathname = usePathname();
   
   const navItems = [
-    { href: '/', label: 'Home' },
-    { href: '/studio', label: 'Studio' },
-    { href: '/test_studio', label: 'Test Studio' },
-    { href: '/gallery', label: 'Gallery' },
+    { href: '/' as const, label: 'Home' },
+    { href: '/studio' as const, label: 'Studio' },
+    { href: '/test_studio' as const, label: 'Test Studio' },
+    { href: '/gallery' as const, label: 'Gallery' },
   ];
 
   return (
