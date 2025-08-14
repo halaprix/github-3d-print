@@ -8,7 +8,7 @@ import {Github3DPrintNFT} from "../src/Github3DPrintNFT.sol";
 contract Deploy is Script {
     function run() public {
         address deployer = vm.rememberKey(vm.envUint("PRIVATE_KEY"));
-        string memory baseUri = vm.envOr("BASE_URI", string("https://github-3d-print.vercel.app/api/nft/"));
+        string memory baseUri = vm.envOr("BASE_URI", string("https://gridgit.halaprix.com/api/nft/"));
         string memory name_ = vm.envOr("NAME", string("GridGit"));
         string memory symbol_ = vm.envOr("SYMBOL", string("POWS"));
 
