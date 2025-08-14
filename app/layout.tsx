@@ -16,31 +16,12 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
+      <head>
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
+        <link href="https://fonts.googleapis.com/css2?family=Mozilla+Headline:wght@200..700&display=swap" rel="stylesheet" />
+      </head>
       <body className={inter.className}>
-        <header className="navbar">
-          <div className="nav-inner">
-            <a href="/" className="brand" style={{ 
-              fontSize: '1.5rem', 
-              background: 'linear-gradient(135deg, #ff2db3, #8a2be2)', 
-              WebkitBackgroundClip: 'text', 
-              WebkitTextFillColor: 'transparent',
-              fontWeight: 900
-            }}>
-              GridGit
-            </a>
-            <div className="nav-search">
-              <input className="search" placeholder="Search NFTs, users, collections..." />
-            </div>
-            <nav className="nav-links">
-              <a href="/" className="nav-link">Home</a>
-              <a href="/studio" className="nav-link">Studio</a>
-              <a href="/test_studio" className="nav-link">Test Studio</a>
-              <a href="/gallery" className="nav-link">Gallery</a>
-              <a href={getOpenSeaCollectionUrl()} target="_blank" rel="noreferrer" className="nav-link">OpenSea</a>
-              <WalletConnect />
-            </nav>
-          </div>
-        </header>
         {children}
         <Analytics />
       </body>
