@@ -17,7 +17,7 @@ const CONFIG = (() => {
   const rpcUrl = process.env.CHAIN_RPC_URL || process.env.NEXT_PUBLIC_CHAIN_RPC || 'https://rpc.ankr.com/eth';
   const explorer = process.env.CHAIN_EXPLORER || process.env.NEXT_PUBLIC_CHAIN_EXPLORER || 'https://etherscan.io';
   const address = (process.env.NFT_CONTRACT_ADDRESS || process.env.NEXT_PUBLIC_NFT_CONTRACT || '').toLowerCase();
-  const deployBlock = Number(process.env.DEPLOY_BLOCK || process.env.NEXT_PUBLIC_DEPLOY_BLOCK || '34141503');
+  const deployBlock = Number(process.env.DEPLOY_BLOCK || process.env.NEXT_PUBLIC_DEPLOY_BLOCK || '34184102');
   return { chainId, chainName, rpcUrl, explorer, address, deployBlock } as const;
 })();
 
