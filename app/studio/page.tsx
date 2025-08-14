@@ -77,7 +77,14 @@ function StudioInner() {
 		const d = deriveParams(activeUser, period);
 		const palette = LIB_PRESETS[d.presetIndex]?.colors ?? LIB_PRESETS[0].colors;
 		const nibbles = quantizeToNibbles(grid);
-		return buildGridSvg(nibbles, palette, d.shapeIndex);
+		return buildGridSvg(nibbles, palette, d.shapeIndex, d.backgroundIndex);
+	}, [grid, activeUser, period]);
+
+	const tokenId = useMemo(() => {
+		if (!grid || !activeUser) return null as null | bigint;
+		const d = deriveParams(activeUser, period);
+		const nibbles = quantizeToNibbles(grid);
+		return encodeTokenIdFromComponents(nibbles, d.shapeIndex, d.presetIndex, d.backgroundIndex, d.contextHash);
 	}, [grid, activeUser, period]);
 
 	function downloadSvg() {
@@ -99,7 +106,7 @@ function StudioInner() {
 			
 			const d = deriveParams(activeUser, period);
 			const nibbles = quantizeToNibbles(grid);
-			const id = encodeTokenIdFromComponents(nibbles, d.shapeIndex, d.presetIndex, d.contextHash);
+			const id = encodeTokenIdFromComponents(nibbles, d.shapeIndex, d.presetIndex, d.backgroundIndex, d.contextHash);
 			
 			setMinting(true);
 			setTxHash(null);
