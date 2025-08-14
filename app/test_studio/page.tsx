@@ -97,38 +97,149 @@ function TestStudioInner() {
   const tokenDec = tokenId != null ? tokenId.toString(10) : '';
 
   return (
-    <main className="container" style={{ display: 'grid', gap: 16 }}>
-      <section className="card">
-        <div className="card-header">
-          <div className="title">Test Studio</div>
-          <span className="pill">Preview only</span>
-        </div>
-        <div className="card-body" style={{ display: 'grid', gap: 12 }}>
-          <div className="toolbar" style={{ flexWrap: 'wrap' as const }}>
-            <input className="input" placeholder="github user" value={user} onChange={(e)=>setUser(e.target.value)} />
-            <button className="button" onClick={()=>fetchUserData(user)} disabled={!user}>Fetch</button>
-            {fetchError && <span style={{ color: 'crimson' }}>{fetchError}</span>}
-            <div className="muted" style={{ display:'flex', gap:8, alignItems:'center' }}>
-              Period:
-              <button className="button" onClick={()=>shiftPeriod(-1)}>&lt;</button>
-              <span>{period ? `${period.start} → ${period.end}` : '—'}</span>
-              <button className="button" onClick={()=>shiftPeriod(1)}>&gt;</button>
+    <main className="tt-view">
+      {/* Hero Section */}
+      <header className="tt-hero gradient-top-right" style={{ padding: '80px 0 60px' }}>
+        <div className="tt-hero-intro">
+          <div className="tt-gradient-container">
+            <div className="tt-gradient-panel-unsticky">
+              <div className="tt-gradient-position">
+                {/* Animated gradient background */}
+              </div>
             </div>
           </div>
-          <div className="muted">NFT ID: {tokenHex || '—'} {tokenId != null ? `(${tokenDec})` : ''}</div>
-          <div className="muted">Minting is disabled here. Use Studio to mint.</div>
-          {period && (<div className="muted">Period: {period.start} → {period.end}</div>)}
+          <div className="tt-heading-content center gap-4">
+            <h1 className="heading-xxlarge z-1">
+              <em className="bold-italic-framed">Test Studio</em>&nbsp;
+              <em className="slim-italic">Preview Mode</em> 🧪
+            </h1>
+            <div className="intro-text mt-0">
+              Test different GitHub users and date ranges to preview how NFTs will look before minting.
+            </div>
+          </div>
         </div>
-      </section>
-      <section className="card">
-        <div className="card-body" style={{ overflow: 'auto' }}>
-          {svg ? (
-            <div dangerouslySetInnerHTML={{ __html: svg }} />
-          ) : (
-            <div className="muted">Enter a user and fetch to preview</div>
-          )}
-        </div>
-      </section>
+      </header>
+
+      {/* Main Content */}
+      <div className="container" style={{ display: 'grid', gap: 24 }}>
+        {/* Controls Section */}
+        <section className="card">
+          <div className="card-header">
+            <div className="title">Test Controls</div>
+            <span className="pill">Preview Only</span>
+          </div>
+          <div className="card-body" style={{ display: 'grid', gap: 20 }}>
+            <div style={{ display: 'grid', gap: 16 }}>
+              <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
+                <input 
+                  className="input" 
+                  placeholder="Enter GitHub username" 
+                  value={user} 
+                  onChange={(e) => setUser(e.target.value)}
+                  style={{ minWidth: '250px' }}
+                />
+                <button 
+                  className="tt-button btn-primary" 
+                  onClick={() => fetchUserData(user)} 
+                  disabled={!user}
+                >
+                  <div className="btn-content">Fetch Data</div>
+                </button>
+              </div>
+              {fetchError && (
+                <span style={{ color: 'crimson', textAlign: 'center', padding: '8px 16px', background: 'rgba(220,20,60,0.1)', borderRadius: '8px' }}>
+                  {fetchError}
+                </span>
+              )}
+            </div>
+
+            {/* Period Navigation */}
+            <div style={{ display: 'grid', gap: 12, alignItems: 'center' }}>
+              <div style={{ textAlign: 'center' }}>
+                <h3 style={{ margin: '0 0 8px 0', fontSize: '1.2rem', fontWeight: 600 }}>Date Range Navigation</h3>
+                <p className="muted" style={{ margin: 0 }}>Use the arrows to shift through different time periods</p>
+              </div>
+              <div style={{ display: 'flex', gap: 16, alignItems: 'center', justifyContent: 'center', flexWrap: 'wrap' }}>
+                <button 
+                  className="tt-button btn-secondary" 
+                  onClick={() => shiftPeriod(-1)}
+                  style={{ padding: '12px 20px' }}
+                >
+                  ← Previous Period
+                </button>
+                <div className="muted" style={{ 
+                  padding: '12px 20px', 
+                  background: 'rgba(255,255,255,0.05)', 
+                  borderRadius: '8px',
+                  minWidth: '200px',
+                  textAlign: 'center'
+                }}>
+                  {period ? `${period.start} → ${period.end}` : 'No period selected'}
+                </div>
+                <button 
+                  className="tt-button btn-secondary" 
+                  onClick={() => shiftPeriod(1)}
+                  style={{ padding: '12px 20px' }}
+                >
+                  Next Period →
+                </button>
+              </div>
+            </div>
+
+            {/* NFT ID Display */}
+            <div style={{ 
+              display: 'grid', 
+              gap: 12, 
+              padding: '20px', 
+              background: 'rgba(0,229,255,0.05)', 
+              borderRadius: '12px',
+              border: '1px solid rgba(0,229,255,0.2)',
+              textAlign: 'center'
+            }}>
+              <h3 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 600, color: '#00E5FF' }}>NFT Token ID</h3>
+              <div style={{ display: 'grid', gap: 8 }}>
+                <div className="muted">
+                  <strong>Hexadecimal:</strong> <code style={{ background: 'rgba(0,0,0,0.3)', padding: '4px 8px', borderRadius: '4px' }}>{tokenHex || '—'}</code>
+                </div>
+                <div className="muted">
+                  <strong>Decimal:</strong> <code style={{ background: 'rgba(0,0,0,0.3)', padding: '4px 8px', borderRadius: '4px' }}>{tokenDec || '—'}</code>
+                </div>
+              </div>
+              <div className="muted" style={{ fontSize: '0.9rem', marginTop: '8px' }}>
+                Minting is disabled here. Use the Studio page to mint your NFT.
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* NFT Preview Section */}
+        <section className="card">
+          <div className="card-header">
+            <div className="title">NFT Preview</div>
+            <span className="pill">Live Preview</span>
+          </div>
+          <div className="card-body" style={{ display: 'grid', gap: 16 }}>
+            {svg ? (
+              <div style={{ display: 'grid', gap: 20, alignItems: 'center' }}>
+                <div dangerouslySetInnerHTML={{ __html: svg }} style={{ display: 'flex', justifyContent: 'center' }} />
+                <div style={{ textAlign: 'center' }}>
+                  <p className="muted" style={{ margin: '0 0 16px 0' }}>
+                    This is exactly how your NFT will look when minted on the blockchain.
+                  </p>
+                  <a href="/studio" className="tt-button btn-primary">
+                    <div className="btn-content">Go to Studio to Mint</div>
+                  </a>
+                </div>
+              </div>
+            ) : (
+              <div className="muted" style={{ textAlign: 'center', padding: '60px 20px' }}>
+                <div style={{ fontSize: '1.2rem', marginBottom: '12px' }}>No Preview Available</div>
+                <div>Enter a GitHub username and fetch data to see the NFT preview</div>
+              </div>
+            )}
+          </div>
+        </section>
+      </div>
     </main>
   );
 }
