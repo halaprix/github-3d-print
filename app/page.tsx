@@ -113,8 +113,8 @@ export default function Home() {
           <div className="container">
             <div className="tt-client-quote-wrap">
               <blockquote>
-                "GridGit has revolutionized how I think about my coding contributions. 
-                <span className="blockquote-span-dark"> Every commit now has a visual story."</span>
+                &ldquo;GridGit has revolutionized how I think about my coding contributions. 
+                <span className="blockquote-span-dark"> Every commit now has a visual story.&rdquo;</span>
               </blockquote>
               <div className="tt-client-logo-wrap">
                 <div className="tt-client-quote-logo dark">

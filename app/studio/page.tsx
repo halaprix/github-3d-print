@@ -1,11 +1,12 @@
 "use client";
 
 import { Suspense, useEffect, useMemo, useState } from 'react';
-import { createWalletClient, custom, getContract, parseAbi } from 'viem';
+import { getContract, parseAbi } from 'viem';
 import { nftConfig } from '@/lib/nftConfig';
 import { PRESET_PALETTES as LIB_PRESETS } from '@/lib/palettes';
 import { deriveParams, quantizeToNibbles, encodeTokenIdFromComponents, buildGridSvg } from '@/lib/nftRender';
 import { HorizontalNav } from '@/components/horizontal-nav';
+import { useAccount, useWalletClient, usePublicClient } from 'wagmi';
 
 type Profile = { login: string; name: string; avatarUrl: string };
 
@@ -25,9 +26,13 @@ function StudioInner() {
 	const [period, setPeriod] = useState<{ start: string; end: string } | null>(null);
 	const [fetchError, setFetchError] = useState<string | null>(null);
 	const [activeUser, setActiveUser] = useState<string | null>(null);
-	const [account, setAccount] = useState<string | null>(null);
 	const [minting, setMinting] = useState(false);
 	const [txHash, setTxHash] = useState<string | null>(null);
+
+	// Rainbow Kit hooks
+	const { address: account, isConnected } = useAccount();
+	const { data: walletClient } = useWalletClient();
+	const publicClient = usePublicClient();
 
 	useEffect(() => {
 		(async () => {
@@ -86,42 +91,53 @@ function StudioInner() {
 		URL.revokeObjectURL(url);
 	}
 
-	async function connectWallet() {
-		const eth = (window as any).ethereum;
-		if (!eth) return alert('Install MetaMask');
-		const [addr] = await eth.request({ method: 'eth_requestAccounts' });
-		setAccount(addr);
-	}
-
 	async function mint() {
 		try {
-			const eth = (window as any).ethereum;
-			if (!eth) return alert('No wallet');
+			if (!walletClient || !publicClient) return alert('Please connect your wallet');
 			if (!activeUser || !grid) return alert('No preview ready');
+			if (!account) return alert('No account connected');
+			
 			const d = deriveParams(activeUser, period);
 			const nibbles = quantizeToNibbles(grid);
 			const id = encodeTokenIdFromComponents(nibbles, d.shapeIndex, d.presetIndex, d.contextHash);
+			
 			setMinting(true);
 			setTxHash(null);
-			const client = createWalletClient({
-				chain: {
-					id: nftConfig.chain.id,
-					name: nftConfig.chain.name,
-					nativeCurrency: { name: 'ETH', symbol: 'ETH', decimals: 18 },
-					rpcUrls: { default: { http: [nftConfig.chain.rpcUrl] } }
-				} as any,
-				transport: custom(eth)
-			});
-			const [from] = await client.requestAddresses();
+			
 			const abi = parseAbi(['function publicMintDeterministic(uint256 tokenId) public returns (uint256)']);
-			const contract = getContract({ address: nftConfig.contractAddress as `0x${string}`, abi, client });
-			const hash = await contract.write.publicMintDeterministic([id], { account: from, chain: client.chain });
+			const contract = getContract({ 
+				address: nftConfig.contractAddress as `0x${string}`, 
+				abi, 
+				client: walletClient 
+			});
+			
+			const hash = await contract.write.publicMintDeterministic([id], { 
+				account, 
+				chain: walletClient.chain 
+			});
+			
 			setTxHash(hash);
 		} catch (e: any) {
 			alert(e?.message || String(e));
 		} finally {
 			setMinting(false);
 		}
+	}
+
+	function shiftPeriod(direction: number) {
+		if (!activeUser || !period) return;
+		const startDate = new Date(period.start);
+		const endDate = new Date(period.end);
+
+		if (direction === -1) {
+			startDate.setDate(startDate.getDate() - 7);
+			endDate.setDate(endDate.getDate() - 7);
+		} else if (direction === 1) {
+			startDate.setDate(startDate.getDate() + 7);
+			endDate.setDate(endDate.getDate() + 7);
+		}
+
+		setPeriod({ start: startDate.toISOString().slice(0, 10), end: endDate.toISOString().slice(0, 10) });
 	}
 
 	return (
@@ -157,7 +173,7 @@ function StudioInner() {
 										Sign in with GitHub
 									</button>
 									<div className="muted" style={{ marginTop: '12px' }}>
-										We'll use your last 7 weeks of contributions
+										We&apos;ll use your last 7 weeks of contributions
 									</div>
 								</div>
 							) : (
@@ -179,20 +195,50 @@ function StudioInner() {
 							<div className="card-header">
 								<div>
 									<div className="title">📅 Contribution Period</div>
-									<div className="subtitle">Select the time range for your NFT</div>
+									<div className="subtitle">Navigate through different 7-week periods</div>
 								</div>
 							</div>
 							<div className="card-body">
-								<div className="tabs">
-									{['1W', '1M', '3M', '6M', '1Y'].map((p) => (
-										<button
-											key={p}
-											className={`tab ${period?.start === p ? 'active' : ''}`}
-											onClick={() => setPeriod({ start: p, end: p })}
+								<div style={{ display: 'flex', flexDirection: 'column', gap: '16px', alignItems: 'center' }}>
+									<div style={{ 
+										padding: '16px 24px', 
+										background: 'rgba(255,255,255,0.05)', 
+										borderRadius: '12px',
+										border: '1px solid rgba(255,255,255,0.1)',
+										minWidth: '280px',
+										textAlign: 'center'
+									}}>
+										<div style={{ fontWeight: 600, marginBottom: '8px' }}>Current Period</div>
+										<div style={{ fontSize: '0.9rem', color: '#9fb3c8' }}>
+											{period ? `${period.start} → ${period.end}` : 'Loading dates...'}
+										</div>
+									</div>
+									
+									<div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
+										<button 
+											className="button" 
+											onClick={() => shiftPeriod(-1)}
+											disabled={!activeUser}
+											style={{ padding: '12px 20px' }}
 										>
-											{p}
+											← Previous Week
 										</button>
-									))}
+										
+										<button 
+											className="button" 
+											onClick={() => shiftPeriod(1)}
+											disabled={!activeUser}
+											style={{ padding: '12px 20px' }}
+										>
+											Next Week →
+										</button>
+									</div>
+								</div>
+								
+								<div style={{ textAlign: 'center', marginTop: '16px' }}>
+									<div className="muted" style={{ fontSize: '0.9rem' }}>
+										Each period shows 7 weeks of contribution data. Use arrows to navigate through time.
+									</div>
 								</div>
 							</div>
 						</section>
@@ -252,7 +298,7 @@ function StudioInner() {
 								<button 
 									className="button" 
 									onClick={mint}
-									disabled={!account || minting}
+									disabled={!isConnected || minting}
 									style={{ 
 										fontSize: '1.1rem', 
 										padding: '16px 32px',
@@ -270,7 +316,7 @@ function StudioInner() {
 									)}
 								</button>
 								
-								{!account && (
+								{!isConnected && (
 									<div style={{ 
 										padding: '16px 32px', 
 										color: '#9fb3c8',
