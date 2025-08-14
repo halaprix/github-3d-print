@@ -2,8 +2,9 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { ConnectButton } from '@rainbow-me/rainbowkit';
 
-export function SimpleNav() {
+export function HorizontalNav() {
   const pathname = usePathname();
   
   const navItems = [
@@ -14,7 +15,7 @@ export function SimpleNav() {
   ];
 
   return (
-    <header className="navbar">
+    <header className="horizontal-navbar">
       <div className="nav-inner">
         <Link href="/" className="brand" style={{ 
           fontSize: '1.5rem', 
@@ -45,6 +46,9 @@ export function SimpleNav() {
             OpenSea
           </a>
         </nav>
+        <div className="wallet-section">
+          <ConnectButton />
+        </div>
       </div>
     </header>
   );

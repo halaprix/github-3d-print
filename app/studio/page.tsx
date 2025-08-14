@@ -5,7 +5,7 @@ import { createWalletClient, custom, getContract, parseAbi } from 'viem';
 import { nftConfig } from '@/lib/nftConfig';
 import { PRESET_PALETTES as LIB_PRESETS } from '@/lib/palettes';
 import { deriveParams, quantizeToNibbles, encodeTokenIdFromComponents, buildGridSvg } from '@/lib/nftRender';
-import { GlassmorphicNav } from '@/components/glassmorphic-nav';
+import { HorizontalNav } from '@/components/horizontal-nav';
 
 type Profile = { login: string; name: string; avatarUrl: string };
 
@@ -125,50 +125,40 @@ function StudioInner() {
 	}
 
 	return (
-		<div className="min-h-screen relative">
-			{/* Glassmorphic Navigation in Top Left - Floating Overlay */}
-			<div className="fixed top-6 left-6 z-50">
-				<GlassmorphicNav />
-			</div>
-
-			<main className="tt-view" style={{ paddingLeft: '24rem' }}>
+		<div className="tt-view">
+			<HorizontalNav />
+			<main style={{ paddingTop: '80px' }}>
 				{/* Hero Section */}
-				<header className="tt-hero gradient-top-right" style={{ padding: '80px 0 60px' }}>
-					<div className="tt-hero-intro">
-						<div className="tt-gradient-container">
-							<div className="tt-gradient-panel-unsticky">
-								<div className="tt-gradient-position">
-									{/* Animated gradient background */}
-								</div>
-							</div>
-						</div>
+				<header className="tt-hero gradient-top-right">
+					<div className="tt-hero-intro z-1">
 						<div className="tt-heading-content center gap-4">
-							<h1 className="heading-xxlarge z-1">
-								Create your <em className="bold-italic-framed">GridGit NFT</em>&nbsp;
-								<em className="slim-italic">instantly</em> 🎨
-							</h1>
-							<div className="intro-text mt-0">
-								Connect your GitHub account, preview your contribution grid, and mint your unique NFT to the blockchain.
+							<h1 className="heading-xxlarge z-1">Create Your <em className="bold-italic-framed">GitHub</em> Contribution <em className="slim-italic">NFT</em> 🚀</h1>
+							<div className="intro-text">
+								<p>Transform your coding activity into a unique, deterministic NFT that perfectly represents your GitHub journey</p>
 							</div>
 						</div>
 					</div>
 				</header>
 
 				{/* Main Content */}
-				<div className="container" style={{ display: 'grid', gap: 24 }}>
+				<div className="container">
 					{/* Authentication Section */}
 					<section className="card">
 						<div className="card-header">
-							<div className="title">Authentication</div>
-							<span className="pill">GitHub + Wallet</span>
+							<div>
+								<div className="title">🔐 GitHub Authentication</div>
+								<div className="subtitle">Connect your GitHub account to start creating</div>
+							</div>
 						</div>
-						<div className="card-body" style={{ display: 'grid', gap: 16 }}>
+						<div className="card-body">
 							{!profile ? (
-								<div style={{ display: 'flex', gap: 16, alignItems: 'center', justifyContent: 'center' }}>
-									<button className="tt-button btn-primary" onClick={signInWithGitHub}>
-										<div className="btn-content">Sign in with GitHub</div>
+								<div style={{ textAlign: 'center' }}>
+									<button className="button" onClick={signInWithGitHub}>
+										Sign in with GitHub
 									</button>
-									<span className="muted">We'll use your last 7 weeks of contributions</span>
+									<div className="muted" style={{ marginTop: '12px' }}>
+										We'll use your last 7 weeks of contributions
+									</div>
 								</div>
 							) : (
 								<div style={{ display: 'flex', alignItems: 'center', gap: 16, justifyContent: 'center' }}>
@@ -179,108 +169,138 @@ function StudioInner() {
 									</div>
 								</div>
 							)}
-							{fetchError && <span style={{ color: 'crimson', textAlign: 'center' }}>{fetchError}</span>}
+							{fetchError && <div className="muted" style={{ marginTop: '12px', color: 'crimson' }}>{fetchError}</div>}
 						</div>
 					</section>
 
-					{/* Wallet Connection Section
-					<section className="card">
-						<div className="card-header">
-							<div className="title">Wallet Connection</div>
-							<span className="pill">Required for Minting</span>
-						</div>
-						<div className="card-body" style={{ display: 'grid', gap: 16, alignItems: 'center', textAlign: 'center' }}>
-							<div>
-								<h3 style={{ margin: 0, fontSize: '1.5rem', fontWeight: 600 }}>Connect Your Wallet</h3>
-								<p className="muted" style={{ margin: '8px 0 0 0' }}>You need a connected wallet to mint your NFT to the blockchain.</p>
-							</div>
-							<div style={{ display: 'flex', gap: 12, justifyContent: 'center', alignItems: 'center', flexWrap: 'wrap' }}>
-								<button 
-									className="tt-button btn-primary" 
-									onClick={connectWallet} 
-									disabled={!!account}
-									style={{ fontSize: '1.1rem', padding: '16px 32px' }}
-								>
-									{account ? `Connected: ${account.slice(0,6)}…${account.slice(-4)}` : 'Connect Wallet'}
-								</button>
-								{period && (
-									<div className="muted" style={{ padding: '12px 20px', background: 'rgba(255,255,255,0.05)', borderRadius: '8px' }}>
-										Period: {period.start} → {period.end}
-									</div>
-								)}
-							</div>
-						</div>
-					</section> */}
-
-					{/* Central Mint Section */}
-					{profile && grid && (
-						<section className="card" style={{ background: 'linear-gradient(135deg, rgba(255,45,179,0.1), rgba(138,43,226,0.1))', border: '1px solid rgba(255,45,179,0.2)' }}>
-							<div className="card-body" style={{ display: 'grid', gap: 24, alignItems: 'center', textAlign: 'center' }}>
+					{/* Period Selection */}
+					{grid && grid.length > 0 && (
+						<section className="card">
+							<div className="card-header">
 								<div>
-									<h2 style={{ margin: 0, fontSize: '2rem', fontWeight: 700, background: 'linear-gradient(135deg, #ff2db3, #8a2be2)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
-										Ready to Mint? 🚀
-									</h2>
-									<p className="muted" style={{ margin: '16px 0 0 0', fontSize: '1.1rem' }}>
-										Your NFT preview is ready. Connect your wallet and mint to the blockchain.
-									</p>
+									<div className="title">📅 Contribution Period</div>
+									<div className="subtitle">Select the time range for your NFT</div>
 								</div>
-								<div style={{ display: 'flex', gap: 16, justifyContent: 'center', alignItems: 'center', flexWrap: 'wrap' }}>
-									{!account ? (
-										<button 
-											className="tt-button btn-primary" 
-											onClick={connectWallet} 
-											style={{ fontSize: '1.2rem', padding: '20px 40px' }}
+							</div>
+							<div className="card-body">
+								<div className="tabs">
+									{['1W', '1M', '3M', '6M', '1Y'].map((p) => (
+										<button
+											key={p}
+											className={`tab ${period?.start === p ? 'active' : ''}`}
+											onClick={() => setPeriod({ start: p, end: p })}
 										>
-											Connect Wallet to Mint
+											{p}
 										</button>
-									) : (
-										<button 
-											className="tt-button btn-primary" 
-											onClick={mint} 
-											disabled={minting || !grid || !profile}
-											style={{ 
-												fontSize: '1.3rem', 
-												padding: '20px 40px',
-												background: 'linear-gradient(135deg, #ff2db3, #8a2be2)',
-												boxShadow: '0 12px 40px rgba(255,45,179,0.4)'
-											}}
-										>
-											{minting ? 'Minting...' : '🚀 Mint NFT'}
-										</button>
-									)}
-									{txHash && (
-										<a className="tt-button btn-secondary" href={`${nftConfig.chain.explorer}/tx/${txHash}`} target="_blank" rel="noreferrer">
-											View Transaction
-										</a>
-									)}
+									))}
 								</div>
 							</div>
 						</section>
 					)}
 
-					{/* NFT Preview Section */}
-					<section className="card">
-						<div className="card-header">
-							<div className="title">NFT Preview</div>
-							<span className="pill">Live Preview</span>
-						</div>
-						<div className="card-body" style={{ display: 'grid', gap: 16 }}>
-							{svg ? (
-								<div style={{ display: 'grid', gap: 20, alignItems: 'center' }}>
-									<div dangerouslySetInnerHTML={{ __html: svg }} style={{ display: 'flex', justifyContent: 'center' }} />
-									<div style={{ display: 'flex', justifyContent: 'center' }}>
-										<button className="tt-button btn-secondary" onClick={downloadSvg}>
-											<div className="btn-content">Download SVG</div>
-										</button>
+					{/* NFT Preview */}
+					{grid && grid.length > 0 && (
+						<section className="card">
+							<div className="card-header">
+								<div>
+									<div className="title">🎨 NFT Preview</div>
+									<div className="subtitle">This is exactly how your NFT will look when minted</div>
+								</div>
+							</div>
+							<div className="card-body">
+								<div style={{ textAlign: 'center' }}>
+									<div 
+										dangerouslySetInnerHTML={{ __html: svg }} 
+										style={{ 
+											maxWidth: '400px', 
+											margin: '0 auto',
+											filter: 'drop-shadow(0 8px 32px rgba(0,0,0,0.3))'
+										}}
+									/>
+								</div>
+							</div>
+						</section>
+					)}
+
+					{/* Central Mint Section */}
+					{grid && grid.length > 0 && (
+						<section className="card" style={{ 
+							background: 'linear-gradient(135deg, rgba(255, 45, 179, 0.1), rgba(138, 43, 226, 0.1))',
+							border: '2px solid rgba(255, 45, 179, 0.3)',
+							textAlign: 'center',
+							padding: '40px'
+						}}>
+							<div style={{ marginBottom: '24px' }}>
+								<h2 style={{ 
+									fontSize: '2rem', 
+									fontWeight: 800, 
+									margin: '0 0 16px 0',
+									background: 'linear-gradient(135deg, #ff2db3, #8a2be2)',
+									WebkitBackgroundClip: 'text',
+									WebkitTextFillColor: 'transparent',
+									backgroundClip: 'text',
+									fontFamily: 'Mozilla Headline, sans-serif'
+								}}>
+									🚀 Ready to Mint?
+								</h2>
+								<p style={{ color: '#9fb3c8', fontSize: '1.1rem', margin: 0 }}>
+									Your NFT is ready! Connect your wallet and mint this unique representation of your GitHub activity.
+								</p>
+							</div>
+							
+							<div style={{ display: 'flex', gap: '16px', justifyContent: 'center', flexWrap: 'wrap' }}>
+								<button 
+									className="button" 
+									onClick={mint}
+									disabled={!account || minting}
+									style={{ 
+										fontSize: '1.1rem', 
+										padding: '16px 32px',
+										background: 'linear-gradient(135deg, rgba(255, 45, 179, 0.3), rgba(138, 43, 226, 0.3))',
+										border: '2px solid rgba(255, 45, 179, 0.5)'
+									}}
+								>
+									{minting ? (
+										<>
+											<span className="spinner"></span>
+											Minting...
+										</>
+									) : (
+										'🎨 Mint NFT'
+									)}
+								</button>
+								
+								{!account && (
+									<div style={{ 
+										padding: '16px 32px', 
+										color: '#9fb3c8',
+										background: 'rgba(255,255,255,0.05)',
+										borderRadius: '12px',
+										border: '1px solid rgba(255,255,255,0.1)'
+									}}>
+										Connect wallet to mint
+									</div>
+								)}
+							</div>
+							
+							{txHash && (
+								<div style={{ 
+									marginTop: '24px', 
+									padding: '16px', 
+									background: 'rgba(0, 229, 255, 0.1)', 
+									borderRadius: '12px',
+									border: '1px solid rgba(0, 229, 255, 0.3)'
+								}}>
+									<div style={{ color: '#00E5FF', fontWeight: 600, marginBottom: '8px' }}>
+										✅ NFT Minted Successfully!
+									</div>
+									<div style={{ fontSize: '0.9rem', color: '#9fb3c8' }}>
+										Transaction: {txHash.slice(0, 10)}...{txHash.slice(-8)}
 									</div>
 								</div>
-							) : (
-								<div className="muted" style={{ textAlign: 'center', padding: '40px 20px' }}>
-									Sign in with GitHub to preview your NFT
-								</div>
 							)}
-						</div>
-					</section>
+						</section>
+					)}
 				</div>
 			</main>
 		</div>
