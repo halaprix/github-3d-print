@@ -183,7 +183,7 @@ function StudioInner() {
 						</div>
 					</section>
 
-					{/* Wallet Connection Section */}
+					{/* Wallet Connection Section
 					<section className="card">
 						<div className="card-header">
 							<div className="title">Wallet Connection</div>
@@ -210,7 +210,7 @@ function StudioInner() {
 								)}
 							</div>
 						</div>
-					</section>
+					</section> */}
 
 					{/* Central Mint Section */}
 					{profile && grid && (
