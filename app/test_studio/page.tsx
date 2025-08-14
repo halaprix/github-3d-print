@@ -132,16 +132,40 @@ function TestStudioInner() {
                   value={user}
                   onChange={(e) => setUser(e.target.value)}
                 />
-                <div className="tabs">
-                  {['1W', '1M', '3M', '6M', '1Y'].map((p) => (
-                    <button
-                      key={p}
-                      className={`tab ${period?.start === p ? 'active' : ''}`}
-                      onClick={() => shiftPeriod(p === '1W' ? 1 : -1)}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', alignItems: 'center' }}>
+                  <div style={{ 
+                    padding: '16px 24px', 
+                    background: 'rgba(255,255,255,0.05)', 
+                    borderRadius: '12px',
+                    border: '1px solid rgba(255,255,255,0.1)',
+                    minWidth: '280px',
+                    textAlign: 'center'
+                  }}>
+                    <div style={{ fontWeight: 600, marginBottom: '8px' }}>Current Period</div>
+                    <div style={{ fontSize: '0.9rem', color: '#9fb3c8' }}>
+                      {period ? `${period.start} → ${period.end}` : 'Loading dates...'}
+                    </div>
+                  </div>
+                  
+                  <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
+                    <button 
+                      className="button" 
+                      onClick={() => shiftPeriod(-1)}
+                      disabled={!user}
+                      style={{ padding: '12px 20px' }}
                     >
-                      {p}
+                      ← Previous Week
                     </button>
-                  ))}
+                    
+                    <button 
+                      className="button" 
+                      onClick={() => shiftPeriod(1)}
+                      disabled={!user}
+                      style={{ padding: '12px 20px' }}
+                    >
+                      Next Week →
+                    </button>
+                  </div>
                 </div>
                 <button 
                   className="button" 
@@ -151,6 +175,13 @@ function TestStudioInner() {
                   {fetchError ? <span style={{ color: 'crimson' }}>{fetchError}</span> : 'Generate Preview'}
                 </button>
               </div>
+              
+              <div style={{ textAlign: 'center', marginTop: '16px' }}>
+                <div className="muted" style={{ fontSize: '0.9rem' }}>
+                  Each period shows 7 weeks of contribution data. Use arrows to navigate through time.
+                </div>
+              </div>
+              
               {fetchError && <div className="muted" style={{ marginTop: '12px', color: 'crimson' }}>{fetchError}</div>}
             </div>
           </section>

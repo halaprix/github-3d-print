@@ -24,7 +24,7 @@ export function Viewer({ grid, label, mode }: { grid: number[][]; label?: string
     mount.appendChild(renderer.domElement);
 
     const { OrbitControls } = require('three/examples/jsm/controls/OrbitControls');
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    // eslint-disable-next-line no-unused-vars
     const controls = new OrbitControls(camera, renderer.domElement);
 
     const light = new THREE.DirectionalLight(0xffffff, 1.0);
