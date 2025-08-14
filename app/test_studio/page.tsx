@@ -81,18 +81,18 @@ function TestStudioInner() {
   }
 
   const svg = useMemo(() => {
-    if (!grid) return '';
+    if (!grid || !user) return '';
     const d = deriveParams(user, period);
     const palette = LIB_PRESETS[d.presetIndex]?.colors ?? LIB_PRESETS[0].colors;
     const nibbles = quantizeToNibbles(grid);
-    return buildGridSvg(nibbles, palette, d.shapeIndex);
+    return buildGridSvg(nibbles, palette, d.shapeIndex, d.backgroundIndex);
   }, [grid, user, period]);
 
   const tokenId = useMemo(() => {
     if (!grid || !user) return null as null | bigint;
     const d = deriveParams(user, period);
     const nibbles = quantizeToNibbles(grid);
-    return encodeTokenIdFromComponents(nibbles, d.shapeIndex, d.presetIndex, d.contextHash);
+    return encodeTokenIdFromComponents(nibbles, d.shapeIndex, d.presetIndex, d.backgroundIndex, d.contextHash);
   }, [grid, user, period]);
   const tokenHex = tokenId != null ? `0x${tokenId.toString(16)}` : '';
   const tokenDec = tokenId != null ? tokenId.toString(10) : '';

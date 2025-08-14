@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { PRESET_PALETTES } from '@/lib/palettes';
+import { BACKGROUND_THEMES } from '@/lib/backgrounds';
 import { buildGridSvg } from '@/lib/nftRender';
 
 export const dynamic = 'force-dynamic';
@@ -12,23 +13,28 @@ export async function GET(_req: NextRequest, { params }: { params: { id: string 
   const tokenId = BigInt(idStr);
   const decoded = decodeTokenId(tokenId);
   if (!decoded) return NextResponse.json({ error: 'Malformed token id' }, { status: 400 });
-  const { grid, shapeIndex, presetIndex, contextHash } = decoded;
+  const { grid, shapeIndex, presetIndex, backgroundIndex, contextHash } = decoded;
   const palette = PRESET_PALETTES[presetIndex]?.colors ?? PRESET_PALETTES[0].colors;
-  const svg = buildGridSvg(grid, palette, shapeIndex);
+  const svg = buildGridSvg(grid, palette, shapeIndex, backgroundIndex);
   const imageB64 = Buffer.from(svg, 'utf8').toString('base64');
   const image = `data:image/svg+xml;base64,${imageB64}`;
   const name = `GridGit #${idStr}`;
+  
+  const shapeNames = [
+    'Rounded Square', 'Square', 'Circle', 'Diamond', 'Hexagon', 'Triangle',
+    'Oval', 'Rhombus', 'Cross', 'Upside Triangle', 'Semicircle', 'Arrow',
+    'Star', 'Wave', 'Diamond', 'Circle'
+  ];
+  
   const metadata = {
     name,
-    description: 'Deterministic on-chain SVG from your GitHub heatmap. Token ID encodes grid, shape, and palette.',
+    description: 'Deterministic on-chain SVG from your GitHub heatmap. Token ID encodes grid, shape, palette, and background.',
     image,
     image_data: svg,
     attributes: [
-      { trait_type: 'MimeType', value: 'image/svg+xml' },
-      { trait_type: 'Encoding', value: 'base64' },
-      { trait_type: 'Embedded', value: 'true' },
-      { trait_type: 'Shape', value: ['rounded','pixel','circle','diamond','hex','triangle'][shapeIndex] ?? 'rounded' },
-      { trait_type: 'Palette', value: PRESET_PALETTES[presetIndex]?.name ?? 'Unknown' },
+      { trait_type: 'Shape', value: shapeNames[shapeIndex] ?? 'Rounded Square' },
+      { trait_type: 'Color Palette', value: PRESET_PALETTES[presetIndex]?.name ?? 'Unknown' },
+      { trait_type: 'Background', value: BACKGROUND_THEMES[backgroundIndex]?.name ?? 'Unknown' },
       { display_type: 'number', trait_type: 'ContextHash', value: Number(contextHash) }
     ]
   } as const;
@@ -39,12 +45,13 @@ export async function GET(_req: NextRequest, { params }: { params: { id: string 
   });
 }
 
-function decodeTokenId(id: bigint): { grid: number[][]; shapeIndex: number; presetIndex: number; contextHash: bigint } | null {
+function decodeTokenId(id: bigint): { grid: number[][]; shapeIndex: number; presetIndex: number; backgroundIndex: number; contextHash: bigint } | null {
   const version = Number((id >> 234n) & 0xffn);
   if (version !== 1) return null;
-  const shapeIndex = Number((id >> 196n) & 0x7n);
-  const presetIndex = Number((id >> 199n) & 0x7n);
-  const contextHash = (id >> 202n) & 0xffffffffn;
+  const shapeIndex = Number((id >> 196n) & 0xfn);
+  const presetIndex = Number((id >> 200n) & 0x7n);
+  const backgroundIndex = Number((id >> 203n) & 0xfn);
+  const contextHash = (id >> 207n) & 0xffffffffn;
   const flat: number[] = [];
   for (let i = 0; i < 49; i++) {
     const nibble = Number((id >> BigInt(i * 4)) & 0xfn);
@@ -52,7 +59,7 @@ function decodeTokenId(id: bigint): { grid: number[][]; shapeIndex: number; pres
   }
   const grid: number[][] = [];
   for (let y = 0; y < 7; y++) grid.push(flat.slice(y * 7, y * 7 + 7));
-  return { grid, shapeIndex, presetIndex, contextHash };
+  return { grid, shapeIndex, presetIndex, backgroundIndex, contextHash };
 }
 
 // buildGridSvg moved to shared lib
