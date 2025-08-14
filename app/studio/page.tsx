@@ -125,19 +125,28 @@ function StudioInner() {
 	}
 
 	function shiftPeriod(direction: number) {
-		if (!activeUser || !period) return;
-		const startDate = new Date(period.start);
-		const endDate = new Date(period.end);
-
-		if (direction === -1) {
-			startDate.setDate(startDate.getDate() - 7);
-			endDate.setDate(endDate.getDate() - 7);
-		} else if (direction === 1) {
-			startDate.setDate(startDate.getDate() + 7);
-			endDate.setDate(endDate.getDate() + 7);
-		}
-
-		setPeriod({ start: startDate.toISOString().slice(0, 10), end: endDate.toISOString().slice(0, 10) });
+		(async () => {
+			const u = activeUser;
+			if (!u) return;
+			const res = await fetch(`/api/github/${encodeURIComponent(u)}`);
+			if (!res.ok) return;
+			const json = await res.json();
+			const full = json.grid as number[][];
+			const weekStart: string[] = json.weekStartDates || [];
+			const weekEnd: string[] = json.weekEndDates || [];
+			const cols = full[0]?.length ?? 0;
+			if (cols < 7) return;
+			const currentStartIndex = weekStart.findIndex((d: string) => d === period?.start);
+			let i = currentStartIndex >= 0 ? currentStartIndex - 6 : 0;
+			i = i + (direction === -1 ? 1 : -1);
+			i = Math.max(0, Math.min(cols - 7, i));
+			const endIndex = i + 6;
+			const seven = full.map((row) => row.slice(i, endIndex + 1)).slice(0, 7);
+			setGrid(seven);
+			const startDate = weekStart[endIndex] || null;
+			const endDate = weekEnd[i] || null;
+			if (startDate && endDate) setPeriod({ start: startDate, end: endDate });
+		})();
 	}
 
 	return (
