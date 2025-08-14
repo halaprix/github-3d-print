@@ -56,7 +56,7 @@ function HomeContent() {
 
       {/* Recent NFTs Section */}
       {latest.length > 0 && (
-        <div className="relative z-10 pt-32">
+        <div className="relative z-10 pt-32" style={{ marginLeft: '24rem' }}>
           <div className="container mx-auto px-4">
             {/* Section Header */}
             <div className="text-center mb-12">
@@ -125,7 +125,7 @@ function HomeContent() {
       )}
 
       {/* Features Section */}
-      <div className="relative z-10 pb-20">
+      <div className="relative z-10 pb-20" style={{ marginLeft: '24rem' }}>
         <div className="container mx-auto px-4">
           <div className="grid md:grid-cols-3 gap-8">
             <div className="glass-bg glass-border glass-shadow p-6 text-center">
@@ -163,7 +163,6 @@ function HomeContent() {
     </div>
   );
 }
-
 function MiniSvg({ seed }: { seed: number }) {
   const size = 120; const cell = 12; const gap = 2; const rows = 7; const cols = 7;
   const width = cols * cell + (cols - 1) * gap;
@@ -198,3 +197,4 @@ function mulberry32(a: number) {
     return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
   };
 }
+

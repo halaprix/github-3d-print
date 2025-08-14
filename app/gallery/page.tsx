@@ -49,7 +49,7 @@ function GalleryInner() {
 				<GlassmorphicNav />
 			</div>
 
-			<main className="tt-view">
+			<main className="tt-view" style={{ paddingLeft: '24rem' }}>
 				{/* Hero Section */}
 				<header className="tt-hero gradient-top-right" style={{ padding: '80px 0 60px' }}>
 					<div className="tt-hero-intro">
