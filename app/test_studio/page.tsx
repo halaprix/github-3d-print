@@ -80,20 +80,24 @@ function TestStudioInner() {
     })();
   }
 
-  const svg = useMemo(() => {
-    if (!grid || !user) return '';
-    const d = deriveParams(user, period);
-    const palette = LIB_PRESETS[d.presetIndex]?.colors ?? LIB_PRESETS[0].colors;
-    const nibbles = quantizeToNibbles(grid);
-    return buildGridSvg(nibbles, palette, d.shapeIndex, d.backgroundIndex);
+  // Derive parameters once to ensure consistency between preview and token ID
+  const derivedParams = useMemo(() => {
+    if (!grid || !user) return null;
+    return deriveParams(user, period);
   }, [grid, user, period]);
 
+  const svg = useMemo(() => {
+    if (!derivedParams) return '';
+    const palette = LIB_PRESETS[derivedParams.presetIndex]?.colors ?? LIB_PRESETS[0].colors;
+    const nibbles = quantizeToNibbles(grid!);
+    return buildGridSvg(nibbles, palette, derivedParams.shapeIndex, derivedParams.backgroundIndex);
+  }, [derivedParams, grid]);
+
   const tokenId = useMemo(() => {
-    if (!grid || !user) return null as null | bigint;
-    const d = deriveParams(user, period);
+    if (!derivedParams || !grid) return null as null | bigint;
     const nibbles = quantizeToNibbles(grid);
-    return encodeTokenIdFromComponents(nibbles, d.shapeIndex, d.presetIndex, d.backgroundIndex, d.contextHash);
-  }, [grid, user, period]);
+    return encodeTokenIdFromComponents(nibbles, derivedParams.shapeIndex, derivedParams.presetIndex, derivedParams.backgroundIndex, derivedParams.contextHash);
+  }, [derivedParams, grid]);
   const tokenHex = tokenId != null ? `0x${tokenId.toString(16)}` : '';
   const tokenDec = tokenId != null ? tokenId.toString(10) : '';
 
@@ -176,6 +180,11 @@ function TestStudioInner() {
                 </button>
               </div>
               
+              {derivedParams && (
+                <div className="muted" style={{ marginTop: '12px', fontSize: '0.9rem' }}>
+                  🔧 Preview Settings: Shape {derivedParams.shapeIndex}, Palette {derivedParams.presetIndex}, Background {derivedParams.backgroundIndex}
+                </div>
+              )}
               <div style={{ textAlign: 'center', marginTop: '16px' }}>
                 <div className="muted" style={{ fontSize: '0.9rem' }}>
                   Each period shows 7 weeks of contribution data. Use arrows to navigate through time.

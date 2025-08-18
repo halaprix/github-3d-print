@@ -3,9 +3,13 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { ConnectButton } from '@rainbow-me/rainbowkit';
+import { useState, useEffect } from 'react';
+import { useFarcasterMiniApp } from '@/lib/useFarcasterMiniApp';
 
 export function HorizontalNav() {
   const pathname = usePathname();
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const { isInMiniApp, user, client } = useFarcasterMiniApp();
   
   const navItems = [
     { href: '/' as const, label: 'Home' },
@@ -13,6 +17,14 @@ export function HorizontalNav() {
     { href: '/test_studio' as const, label: 'Test Studio' },
     { href: '/gallery' as const, label: 'Gallery' },
   ];
+
+  const toggleMobileMenu = () => {
+    setIsMobileMenuOpen(!isMobileMenuOpen);
+  };
+
+  const closeMobileMenu = () => {
+    setIsMobileMenuOpen(false);
+  };
 
   return (
     <header className="horizontal-navbar">
@@ -27,7 +39,9 @@ export function HorizontalNav() {
         }}>
           GridGit
         </Link>
-        <nav className="nav-links">
+        
+        {/* Desktop Navigation */}
+        <nav className="nav-links desktop-only">
           {navItems.map((item) => (
             <Link
               key={item.href}
@@ -46,10 +60,73 @@ export function HorizontalNav() {
             OpenSea
           </a>
         </nav>
+
+        {/* Mobile Menu Button */}
+        <button 
+          className="mobile-menu-button desktop-hidden"
+          onClick={toggleMobileMenu}
+          aria-label="Toggle mobile menu"
+        >
+          <div className={`hamburger ${isMobileMenuOpen ? 'open' : ''}`}>
+            <span></span>
+            <span></span>
+            <span></span>
+          </div>
+        </button>
+
+        {/* Wallet Section */}
         <div className="wallet-section">
-          <ConnectButton />
+          {isInMiniApp && user ? (
+            <div className="farcaster-user">
+              <div className="user-info">
+                <span className="username">@{user.username || user.fid}</span>
+                {user.displayName && (
+                  <span className="display-name">{user.displayName}</span>
+                )}
+              </div>
+              {user.pfpUrl && (
+                <img 
+                  src={user.pfpUrl} 
+                  alt="Profile" 
+                  className="user-avatar"
+                />
+              )}
+            </div>
+          ) : (
+            <ConnectButton />
+          )}
         </div>
       </div>
+
+      {/* Mobile Navigation Menu */}
+      <div className={`mobile-menu ${isMobileMenuOpen ? 'open' : ''}`}>
+        <nav className="mobile-nav-links">
+          {navItems.map((item) => (
+            <Link
+              key={item.href}
+              href={item.href}
+              className={`mobile-nav-link ${pathname === item.href ? 'active' : ''}`}
+              onClick={closeMobileMenu}
+            >
+              {item.label}
+            </Link>
+          ))}
+          <a 
+            href="https://opensea.io/collection/gridgit" 
+            target="_blank" 
+            rel="noreferrer" 
+            className="mobile-nav-link"
+            onClick={closeMobileMenu}
+          >
+            OpenSea
+          </a>
+        </nav>
+      </div>
+
+      {/* Mobile Menu Overlay */}
+      {isMobileMenuOpen && (
+        <div className="mobile-menu-overlay" onClick={closeMobileMenu} />
+      )}
     </header>
   );
 }

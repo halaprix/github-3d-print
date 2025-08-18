@@ -1,0 +1,26 @@
+{
+  "miniapp": {
+    "version": "1",
+    "name": "GridGit",
+    "iconUrl": "https://gridgit.halaprix.com/icon.svg",
+    "homeUrl": "https://gridgit.halaprix.com",
+    "imageUrl": "https://gridgit.halaprix.com/og-image.svg",
+    "buttonTitle": "🚀 Mint NFT",
+    "splashImageUrl": "https://gridgit.halaprix.com/icon.svg",
+    "splashBackgroundColor": "#0a0f1a",
+    "description": "Mint deterministic NFTs from your GitHub contribution heatmap",
+    "subtitle": "GitHub to NFT",
+    "primaryCategory": "art-creativity",
+    "tags": ["nft", "github", "contributions", "minting", "blockchain"],
+    "heroImageUrl": "https://gridgit.halaprix.com/og-image.svg",
+    "tagline": "Turn your GH heatmap into NFTs",
+    "ogTitle": "GridGit - GitHub to NFT",
+    "ogDescription": "Mint deterministic NFTs from your GitHub contribution heatmap",
+    "ogImageUrl": "https://gridgit.halaprix.com/og-image.svg"
+  },
+  "accountAssociation": {
+    "header": "eyJmaWQiOjMzNzc5NywidHlwZSI6ImF1dGgiLCJrZXkiOiIweEMwRDQwNjBBNUEyOWQyYTRjZjVDMzhDY0YxNTJjNTNjRWRFRkQ3NEUifQ",
+    "payload": "eyJkb21haW4iOiJncmlkZ2l0LmhhbGFwcml4LmNvbSJ9",
+    "signature": "ffHgGXPZAUiUf1lQfmNiQOMd6CXd/PoHtli4TevkTxgU+8O3oRwz8HKaRxtCHgzjDLTis/DJl4Q0ousEF8vduhs="
+  }
+}
