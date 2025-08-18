@@ -1,6 +1,26 @@
 import { PRESET_PALETTES } from '@/lib/palettes';
 import { BACKGROUND_THEMES } from '@/lib/backgrounds';
 
+// Token ID bit layout constants for easier maintenance
+// FIXED: Corrected bit allocation to match actual palette/background counts
+// - Preset: 4 bits (0-15) for 16 palettes (was 3 bits, only 8 palettes)
+// - Background: 3 bits (0-7) for 8 backgrounds (was 4 bits, 16 backgrounds)
+export const TOKEN_ID_LAYOUT = {
+	GRID_START: 0,
+	GRID_END: 195,        // 49 * 4 - 1
+	SHAPE_START: 196,
+	SHAPE_END: 199,       // 4 bits
+	PRESET_START: 200,
+	PRESET_END: 203,      // 4 bits (FIXED: was 3 bits, now 4 bits for 16 palettes)
+	BACKGROUND_START: 204,
+	BACKGROUND_END: 206,  // 3 bits (FIXED: was 4 bits, now 3 bits for 8 backgrounds)
+	CONTEXT_START: 207,
+	CONTEXT_END: 238,     // 32 bits
+	VERSION_START: 239,
+	VERSION_END: 242,     // 4 bits
+	TOTAL_BITS: 242
+} as const;
+
 export type Period = { start: string; end: string } | null;
 
 export function fnv1a32(str: string): number {
@@ -36,9 +56,24 @@ export function quantizeToNibbles(grid: number[][]): number[][] {
 	return out;
 }
 
+/**
+ * Encode NFT components into a deterministic token ID
+ * 
+ * FIXED: Previous version had overlapping bit fields causing version corruption
+ * - Context hash (32 bits) was overlapping with version (8 bits)
+ * - This caused "malformed id" errors and incorrect version numbers
+ * 
+ * New layout ensures no overlap and correct allocation:
+ * - Grid: bits 0-195 (49 * 4 bits)
+ * - Shape: bits 196-199 (4 bits)
+ * - Preset: bits 200-203 (4 bits) - FIXED: now supports 16 palettes
+ * - Background: bits 204-206 (3 bits) - FIXED: now supports 8 backgrounds
+ * - Context Hash: bits 207-238 (32 bits)
+ * - Version: bits 239-242 (4 bits)
+ */
 export function encodeTokenIdFromComponents(nibbleGrid: number[][], shapeIndex: number, presetIndex: number, backgroundIndex: number, contextHash: number): bigint {
 	let id = 0n;
-	// pack 49 nibbles little-endian
+	// pack 49 nibbles little-endian (bits 0-195)
 	let i = 0;
 	for (let y = 0; y < 7; y++) {
 		for (let x = 0; x < 7; x++) {
@@ -47,11 +82,14 @@ export function encodeTokenIdFromComponents(nibbleGrid: number[][], shapeIndex: 
 			i++;
 		}
 	}
-	id |= BigInt(shapeIndex & 0xf) << 196n;
-	id |= BigInt(presetIndex & 0x7) << 200n;
-	id |= BigInt(backgroundIndex & 0xf) << 203n;
-	id |= BigInt(contextHash >>> 0) << 207n;
-	id |= 1n << 234n; // version 1
+	
+	// Pack metadata using layout constants for consistency
+	id |= BigInt(shapeIndex & 0xf) << BigInt(TOKEN_ID_LAYOUT.SHAPE_START);
+	id |= BigInt(presetIndex & 0xf) << BigInt(TOKEN_ID_LAYOUT.PRESET_START);      // FIXED: 4 bits for 16 palettes
+	id |= BigInt(backgroundIndex & 0x7) << BigInt(TOKEN_ID_LAYOUT.BACKGROUND_START); // FIXED: 3 bits for 8 backgrounds
+	id |= BigInt(contextHash >>> 0) << BigInt(TOKEN_ID_LAYOUT.CONTEXT_START);
+	id |= 1n << BigInt(TOKEN_ID_LAYOUT.VERSION_START); // version 1
+	
 	return id;
 }
 
@@ -90,7 +128,7 @@ export function buildGridSvg(nibbleGrid: number[][], palette: string[], shapeInd
 			}
 			case 6: {
 				const r = Math.max(1, cell / 2 - inset);
-				return `<ellipse cx="${cx}" cy="${cy}" rx="${r * 1.5}" ry="${r}" fill="${fill}"/>`;
+				return `<ellipse cx="${cx}" cy="${cy}" rx="${r * 1.3}" ry="${r * 0.8}" fill="${fill}"/>`;
 			}
 			case 7: {
 				const r = Math.max(1, cell / 2 - inset);
@@ -161,5 +199,99 @@ export function buildGridSvg(nibbleGrid: number[][], palette: string[], shapeInd
 	}
 	return `<?xml version="1.0" encoding="UTF-8"?>\n<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" shape-rendering="geometricPrecision" preserveAspectRatio="xMidYMid meet">\n<rect x="0" y="0" width="${width}" height="${height}" fill="${bg}"/>\n${shapes.join('\n')}\n</svg>`;
 }
+
+/**
+ * Decode a token ID back into its components
+ * This function mirrors the encoding logic in encodeTokenIdFromComponents
+ */
+export function decodeTokenId(id: bigint): { grid: number[][]; shapeIndex: number; presetIndex: number; backgroundIndex: number; contextHash: bigint } | null {
+	try {
+		// Extract version from bits 239-242 (4 bits)
+		const version = Number((id >> BigInt(TOKEN_ID_LAYOUT.VERSION_START)) & 0xfn);
+		
+		// Validate version
+		if (version !== 1) {
+			console.log(`Token ID version mismatch: expected 1, got ${version}`);
+			return null;
+		}
+		
+		// Extract metadata components using layout constants
+		const shapeIndex = Number((id >> BigInt(TOKEN_ID_LAYOUT.SHAPE_START)) & 0xfn);
+		const presetIndex = Number((id >> BigInt(TOKEN_ID_LAYOUT.PRESET_START)) & 0xfn);      // FIXED: 4 bits for 16 palettes
+		const backgroundIndex = Number((id >> BigInt(TOKEN_ID_LAYOUT.BACKGROUND_START)) & 0x7n); // FIXED: 3 bits for 8 backgrounds
+		const contextHash = (id >> BigInt(TOKEN_ID_LAYOUT.CONTEXT_START)) & 0xffffffffn;
+		
+		// Validate indices are within bounds
+		if (shapeIndex >= 16 || presetIndex >= 16 || backgroundIndex >= 8) { // FIXED: preset 16, background 8
+			console.log(`Token ID indices out of bounds: shape=${shapeIndex}, preset=${presetIndex}, background=${backgroundIndex}`);
+			return null;
+		}
+		
+		// Extract grid data from bits 0-195 (49 * 4 bits)
+		const flat: number[] = [];
+		for (let i = 0; i < 49; i++) {
+			const nibble = Number((id >> BigInt(i * 4)) & 0xfn);
+			if (nibble > 15) {
+				console.log(`Invalid nibble at position ${i}: ${nibble}`);
+				return null;
+			}
+			flat.push(nibble);
+		}
+		
+		// Convert flat array to 7x7 grid
+		const grid: number[][] = [];
+		for (let y = 0; y < 7; y++) {
+			grid.push(flat.slice(y * 7, y * 7 + 7));
+		}
+		
+		return { grid, shapeIndex, presetIndex, backgroundIndex, contextHash };
+	} catch (error) {
+		console.log(`Error decoding token ID: ${error}`);
+		return null;
+	}
+}
+
+/**
+ * Debug utility to analyze a token ID and show its components
+ * Useful for troubleshooting encoding/decoding issues
+ */
+export function debugTokenId(tokenId: bigint): void {
+	console.log(`=== Token ID Debug: ${tokenId.toString()} ===`);
+	console.log(`Binary: ${tokenId.toString(2).padStart(TOKEN_ID_LAYOUT.TOTAL_BITS, '0')}`);
+	
+	try {
+		const decoded = decodeTokenId(tokenId);
+		if (decoded) {
+			console.log('✅ Decoded successfully:');
+			console.log(`  Shape Index: ${decoded.shapeIndex}`);
+			console.log(`  Preset Index: ${decoded.presetIndex}`);
+			console.log(`  Background Index: ${decoded.backgroundIndex}`);
+			console.log(`  Context Hash: ${decoded.contextHash}`);
+			console.log(`  Grid: ${decoded.grid.flat().join(',')}`);
+		} else {
+			console.log('❌ Failed to decode token ID');
+		}
+	} catch (error) {
+		console.log(`❌ Error during debug: ${error}`);
+	}
+	
+	// Show raw bit extraction for manual verification
+	const version = Number((tokenId >> BigInt(TOKEN_ID_LAYOUT.VERSION_START)) & 0xfn);
+	const shape = Number((tokenId >> BigInt(TOKEN_ID_LAYOUT.SHAPE_START)) & 0xfn);
+	const preset = Number((tokenId >> BigInt(TOKEN_ID_LAYOUT.PRESET_START)) & 0xfn);      // FIXED: 4 bits
+	const background = Number((tokenId >> BigInt(TOKEN_ID_LAYOUT.BACKGROUND_START)) & 0x7n); // FIXED: 3 bits
+	const context = Number((tokenId >> BigInt(TOKEN_ID_LAYOUT.CONTEXT_START)) & 0xffffffffn);
+	
+	console.log('Raw bit extraction:');
+	console.log(`  Version (bits ${TOKEN_ID_LAYOUT.VERSION_START}-${TOKEN_ID_LAYOUT.VERSION_END}): ${version}`);
+	console.log(`  Shape (bits ${TOKEN_ID_LAYOUT.SHAPE_START}-${TOKEN_ID_LAYOUT.SHAPE_END}): ${shape}`);
+	console.log(`  Preset (bits ${TOKEN_ID_LAYOUT.PRESET_START}-${TOKEN_ID_LAYOUT.PRESET_END}): ${preset}`);
+	console.log(`  Background (bits ${TOKEN_ID_LAYOUT.BACKGROUND_START}-${TOKEN_ID_LAYOUT.BACKGROUND_END}): ${background}`);
+	console.log(`  Context (bits ${TOKEN_ID_LAYOUT.CONTEXT_START}-${TOKEN_ID_LAYOUT.CONTEXT_END}): ${context}`);
+	console.log('=====================================');
+}
+
+// Test the problematic token ID that was causing issues
+// Uncomment this to test: debugTokenId(825282336020713553836743218312421266391369350877941062520538893935321634n);
 
 

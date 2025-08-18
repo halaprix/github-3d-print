@@ -11,6 +11,36 @@ const inter = Inter({ subsets: ['latin'] });
 export const metadata: Metadata = {
   title: 'GridGit - GitHub Contribution NFTs',
   description: 'Mint unique NFTs from your GitHub contribution history',
+  other: {
+    'fc:miniapp': JSON.stringify({
+      version: "1",
+      imageUrl: "https://gridgit.halaprix.com/og-image.svg",
+      button: {
+        title: "🚀 Mint NFT",
+        action: {
+          type: "launch_miniapp",
+          name: "GridGit",
+          url: "https://gridgit.halaprix.com",
+          splashImageUrl: "https://gridgit.halaprix.com/icon.svg",
+          splashBackgroundColor: "#0a0f1a"
+        }
+      }
+    }),
+    'fc:frame': JSON.stringify({
+      version: "1",
+      imageUrl: "https://gridgit.halaprix.com/og-image.svg",
+      button: {
+        title: "🚀 Mint NFT",
+        action: {
+          type: "launch_frame",
+          name: "GridGit",
+          url: "https://gridgit.halaprix.com",
+          splashImageUrl: "https://gridgit.halaprix.com/icon.svg",
+          splashBackgroundColor: "#0a0f1a"
+        }
+      }
+    })
+  }
 }
 
 export default function RootLayout({

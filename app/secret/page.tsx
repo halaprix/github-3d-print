@@ -6,17 +6,7 @@ import { nftConfig } from '@/lib/nftConfig';
 import { PRESET_PALETTES as LIB_PRESETS } from '@/lib/palettes';
 import { useSearchParams } from 'next/navigation';
 
-type Palette = { id: string; name: string; colors: string[] };
-const PRESET_PALETTES: Palette[] = [
-  { id: 'neon-city', name: 'Neon City', colors: ['#0a0f1a', '#00E5FF', '#00FFA3', '#F5D300', '#FF2079'] },
-  { id: 'aurora', name: 'Aurora Borealis', colors: ['#06121e', '#2bd1ff', '#29f19c', '#a2ff49', '#f0ff89'] },
-  { id: 'solarized-night', name: 'Solarized Night', colors: ['#002b36', '#268bd2', '#2aa198', '#b58900', '#cb4b16'] },
-  { id: 'cyber-sunset', name: 'Cyberpunk Sunset', colors: ['#0d0221', '#00f0ff', '#ff00e6', '#ffa600', '#ff2e00'] },
-  { id: 'minty-fresh', name: 'Minty Fresh', colors: ['#0b1724', '#8ef6e4', '#5bd1b3', '#39a0a3', '#45969b'] },
-  { id: 'magma', name: 'Magma', colors: ['#0a0a0a', '#3b0a0a', '#7a1e03', '#d94f04', '#ff9e00'] },
-  { id: 'oceanic', name: 'Oceanic', colors: ['#061826', '#1b4b5a', '#237a57', '#2fa08a', '#9ad1d4'] }
-];
-function defaultColors() { return PRESET_PALETTES[0].colors; }
+function defaultColors() { return LIB_PRESETS[0].colors; }
 
 function fnv1a32(str: string): number {
   let h = 0x811c9dc5;

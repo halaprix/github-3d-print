@@ -1,0 +1,101 @@
+<svg width="1200" height="800" viewBox="0 0 1200 800" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1200" height="800" fill="url(#bgGradient)"/>
+  
+  <!-- Grid pattern representing GitHub contributions -->
+  <g opacity="0.3">
+    <!-- Create a 7x7 grid pattern -->
+    <g transform="translate(200, 150)">
+      <!-- Row 1 -->
+      <rect x="0" y="0" width="80" height="80" rx="8" fill="rgba(255,255,255,0.8)"/>
+      <rect x="100" y="0" width="80" height="80" rx="8" fill="rgba(255,255,255,0.6)"/>
+      <rect x="200" y="0" width="80" height="80" rx="8" fill="rgba(255,255,255,0.4)"/>
+      <rect x="300" y="0" width="80" height="80" rx="8" fill="rgba(255,255,255,0.2)"/>
+      <rect x="400" y="0" width="80" height="80" rx="8" fill="rgba(255,255,255,0.1)"/>
+      <rect x="500" y="0" width="80" height="80" rx="8" fill="rgba(255,255,255,0.05)"/>
+      <rect x="600" y="0" width="80" height="80" rx="8" fill="rgba(255,255,255,0.02)"/>
+      
+      <!-- Row 2 -->
+      <rect x="0" y="100" width="80" height="80" rx="8" fill="rgba(255,255,255,0.7)"/>
+      <rect x="100" y="100" width="80" height="80" rx="8" fill="rgba(255,255,255,0.5)"/>
+      <rect x="200" y="100" width="80" height="80" rx="8" fill="rgba(255,255,255,0.3)"/>
+      <rect x="300" y="100" width="80" height="80" rx="8" fill="rgba(255,255,255,0.1)"/>
+      <rect x="400" y="100" width="80" height="80" rx="8" fill="rgba(255,255,255,0.05)"/>
+      <rect x="500" y="100" width="80" height="80" rx="8" fill="rgba(255,255,255,0.02)"/>
+      <rect x="600" y="100" width="80" height="80" rx="8" fill="rgba(255,255,255,0.01)"/>
+      
+      <!-- Row 3 -->
+      <rect x="0" y="200" width="80" height="80" rx="8" fill="rgba(255,255,255,0.6)"/>
+      <rect x="100" y="200" width="80" height="80" rx="8" fill="rgba(255,255,255,0.4)"/>
+      <rect x="200" y="200" width="80" height="80" rx="8" fill="rgba(255,255,255,0.2)"/>
+      <rect x="300" y="200" width="80" height="80" rx="8" fill="rgba(255,255,255,0.1)"/>
+      <rect x="400" y="200" width="80" height="80" rx="8" fill="rgba(255,255,255,0.05)"/>
+      <rect x="500" y="200" width="80" height="80" rx="8" fill="rgba(255,255,255,0.02)"/>
+      <rect x="600" y="200" width="80" height="80" rx="8" fill="rgba(255,255,255,0.01)"/>
+      
+      <!-- Row 4 -->
+      <rect x="0" y="300" width="80" height="80" rx="8" fill="rgba(255,255,255,0.5)"/>
+      <rect x="100" y="300" width="80" height="80" rx="8" fill="rgba(255,255,255,0.3)"/>
+      <rect x="200" y="300" width="80" height="80" rx="8" fill="rgba(255,255,255,0.1)"/>
+      <rect x="300" y="300" width="80" height="80" rx="8" fill="rgba(255,255,255,0.05)"/>
+      <rect x="400" y="300" width="80" height="80" rx="8" fill="rgba(255,255,255,0.02)"/>
+      <rect x="500" y="300" width="80" height="80" rx="8" fill="rgba(255,255,255,0.01)"/>
+      <rect x="600" y="300" width="80" height="80" rx="8" fill="rgba(255,255,255,0.005)"/>
+      
+      <!-- Row 5 -->
+      <rect x="0" y="400" width="80" height="80" rx="8" fill="rgba(255,255,255,0.4)"/>
+      <rect x="100" y="400" width="80" height="80" rx="8" fill="rgba(255,255,255,0.2)"/>
+      <rect x="200" y="400" width="80" height="80" rx="8" fill="rgba(255,255,255,0.1)"/>
+      <rect x="300" y="400" width="80" height="80" rx="8" fill="rgba(255,255,255,0.05)"/>
+      <rect x="400" y="400" width="80" height="80" rx="8" fill="rgba(255,255,255,0.02)"/>
+      <rect x="500" y="400" width="80" height="80" rx="8" fill="rgba(255,255,255,0.01)"/>
+      <rect x="600" y="400" width="80" height="80" rx="8" fill="rgba(255,255,255,0.005)"/>
+      
+      <!-- Row 6 -->
+      <rect x="0" y="500" width="80" height="80" rx="8" fill="rgba(255,255,255,0.3)"/>
+      <rect x="100" y="500" width="80" height="80" rx="8" fill="rgba(255,255,255,0.1)"/>
+      <rect x="200" y="500" width="80" height="80" rx="8" fill="rgba(255,255,255,0.05)"/>
+      <rect x="300" y="500" width="80" height="80" rx="8" fill="rgba(255,255,255,0.02)"/>
+      <rect x="400" y="500" width="80" height="80" rx="8" fill="rgba(255,255,255,0.01)"/>
+      <rect x="500" y="500" width="80" height="80" rx="8" fill="rgba(255,255,255,0.005)"/>
+      <rect x="600" y="500" width="80" height="80" rx="8" fill="rgba(255,255,255,0.002)"/>
+      
+      <!-- Row 7 -->
+      <rect x="0" y="600" width="80" height="80" rx="8" fill="rgba(255,255,255,0.2)"/>
+      <rect x="100" y="600" width="80" height="80" rx="8" fill="rgba(255,255,255,0.05)"/>
+      <rect x="200" y="600" width="80" height="80" rx="8" fill="rgba(255,255,255,0.02)"/>
+      <rect x="300" y="600" width="80" height="80" rx="8" fill="rgba(255,255,255,0.01)"/>
+      <rect x="400" y="600" width="80" height="80" rx="8" fill="rgba(255,255,255,0.005)"/>
+      <rect x="500" y="600" width="80" height="80" rx="8" fill="rgba(255,255,255,0.002)"/>
+      <rect x="600" y="600" width="80" height="80" rx="8" fill="rgba(255,255,255,0.001)"/>
+    </g>
+  </g>
+  
+  <!-- Main title -->
+  <text x="600" y="200" text-anchor="middle" font-family="Arial, sans-serif" font-size="72" font-weight="bold" fill="white">
+    GridGit
+  </text>
+  
+  <!-- Subtitle -->
+  <text x="600" y="280" text-anchor="middle" font-family="Arial, sans-serif" font-size="36" fill="rgba(255,255,255,0.9)">
+    GitHub to NFT
+  </text>
+  
+  <!-- Description -->
+  <text x="600" y="340" text-anchor="middle" font-family="Arial, sans-serif" font-size="24" fill="rgba(255,255,255,0.8)">
+    Mint deterministic NFTs from your contribution heatmap
+  </text>
+  
+  <!-- Button -->
+  <rect x="450" y="400" width="300" height="80" rx="40" fill="rgba(255,255,255,0.2)" stroke="rgba(255,255,255,0.3)" stroke-width="2"/>
+  <text x="600" y="450" text-anchor="middle" font-family="Arial, sans-serif" font-size="28" font-weight="bold" fill="white">
+    🚀 Mint NFT
+  </text>
+  
+  <defs>
+    <linearGradient id="bgGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#0a0f1a;stop-opacity:1" />
+      <stop offset="50%" style="stop-color:#1a0f2a;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#2a0f3a;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+</svg>

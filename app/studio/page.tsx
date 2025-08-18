@@ -1,12 +1,13 @@
 "use client";
 
 import { Suspense, useEffect, useMemo, useState } from 'react';
-import { getContract, parseAbi } from 'viem';
+import { getContract, parseAbi, encodeFunctionData } from 'viem';
 import { nftConfig } from '@/lib/nftConfig';
 import { PRESET_PALETTES as LIB_PRESETS } from '@/lib/palettes';
 import { deriveParams, quantizeToNibbles, encodeTokenIdFromComponents, buildGridSvg } from '@/lib/nftRender';
 import { HorizontalNav } from '@/components/horizontal-nav';
 import { useAccount, useWalletClient, usePublicClient } from 'wagmi';
+import { useFarcasterMiniApp } from '@/lib/useFarcasterMiniApp';
 
 type Profile = { login: string; name: string; avatarUrl: string };
 
@@ -28,6 +29,10 @@ function StudioInner() {
 	const [activeUser, setActiveUser] = useState<string | null>(null);
 	const [minting, setMinting] = useState(false);
 	const [txHash, setTxHash] = useState<string | null>(null);
+	const [usernameInput, setUsernameInput] = useState('');
+	const [isLoadingUsername, setIsLoadingUsername] = useState(false);
+	const [usernameSuccess, setUsernameSuccess] = useState(false);
+	const { isInMiniApp, getEthereumProvider } = useFarcasterMiniApp();
 
 	// Rainbow Kit hooks
 	const { address: account, isConnected } = useAccount();
@@ -48,7 +53,11 @@ function StudioInner() {
 	}, []);
 
 	async function signInWithGitHub() {
-		window.location.href = '/api/auth/github/login';
+		if (isInMiniApp) {
+			window.open('/api/auth/github/login', '_blank');
+		} else {
+			window.location.href = '/api/auth/github/login';
+		}
 	}
 
 	async function fetchUserData(login: string) {
@@ -72,20 +81,39 @@ function StudioInner() {
 		}
 	}
 
-	const svg = useMemo(() => {
-		if (!grid || !activeUser) return '';
-		const d = deriveParams(activeUser, period);
-		const palette = LIB_PRESETS[d.presetIndex]?.colors ?? LIB_PRESETS[0].colors;
-		const nibbles = quantizeToNibbles(grid);
-		return buildGridSvg(nibbles, palette, d.shapeIndex, d.backgroundIndex);
+	async function fetchByUsername() {
+		if (!usernameInput.trim()) return;
+		setIsLoadingUsername(true);
+		setUsernameSuccess(false);
+		const username = usernameInput.trim();
+		setActiveUser(username);
+		try {
+			await fetchUserData(username);
+			setUsernameInput(''); // Clear input after successful fetch
+			setUsernameSuccess(true);
+		} finally {
+			setIsLoadingUsername(false);
+		}
+	}
+
+	// Derive parameters once to ensure consistency between preview and minting
+	const derivedParams = useMemo(() => {
+		if (!grid || !activeUser) return null;
+		return deriveParams(activeUser, period);
 	}, [grid, activeUser, period]);
 
+	const svg = useMemo(() => {
+		if (!derivedParams) return '';
+		const palette = LIB_PRESETS[derivedParams.presetIndex]?.colors ?? LIB_PRESETS[0].colors;
+		const nibbles = quantizeToNibbles(grid!);
+		return buildGridSvg(nibbles, palette, derivedParams.shapeIndex, derivedParams.backgroundIndex);
+	}, [derivedParams, grid]);
+
 	const tokenId = useMemo(() => {
-		if (!grid || !activeUser) return null as null | bigint;
-		const d = deriveParams(activeUser, period);
+		if (!derivedParams || !grid) return null as null | bigint;
 		const nibbles = quantizeToNibbles(grid);
-		return encodeTokenIdFromComponents(nibbles, d.shapeIndex, d.presetIndex, d.backgroundIndex, d.contextHash);
-	}, [grid, activeUser, period]);
+		return encodeTokenIdFromComponents(nibbles, derivedParams.shapeIndex, derivedParams.presetIndex, derivedParams.backgroundIndex, derivedParams.contextHash);
+	}, [derivedParams, grid]);
 
 	function downloadSvg() {
 		if (!svg) return;
@@ -100,30 +128,87 @@ function StudioInner() {
 
 	async function mint() {
 		try {
-			if (!walletClient || !publicClient) return alert('Please connect your wallet');
-			if (!activeUser || !grid) return alert('No preview ready');
-			if (!account) return alert('No account connected');
+			if (!activeUser || !grid || !derivedParams) return alert('No preview ready');
 			
-			const d = deriveParams(activeUser, period);
+			let client: any;
+			let accountAddress: string;
+			let chain: any;
+			
+			if (isInMiniApp) {
+				// Use Farcaster wallet in Mini App
+				const farcasterProvider = getEthereumProvider();
+				if (!farcasterProvider) return alert('Farcaster wallet not available');
+				
+				try {
+					// getEthereumProvider returns a Promise, so we need to await it
+					const provider = await farcasterProvider;
+					if (!provider) return alert('Farcaster wallet provider not available');
+					
+					// Get accounts from Farcaster wallet
+					const accounts = await provider.request({ method: 'eth_accounts' });
+					if (!accounts || accounts.length === 0) return alert('No Farcaster wallet connected');
+					
+					accountAddress = accounts[0];
+					client = provider;
+					chain = { id: 8453 }; // Base chain
+				} catch (error) {
+					return alert('Failed to connect to Farcaster wallet: ' + (error as Error).message);
+				}
+			} else {
+				// Use Rainbow Kit wallet for regular web
+				if (!walletClient || !publicClient) return alert('Please connect your wallet');
+				if (!account) return alert('No account connected');
+				
+				client = walletClient;
+				accountAddress = account;
+				chain = walletClient.chain;
+			}
+			
+			// Early return if walletClient is undefined for contract creation
+			if (!walletClient) return alert('Wallet client not available');
+			
 			const nibbles = quantizeToNibbles(grid);
-			const id = encodeTokenIdFromComponents(nibbles, d.shapeIndex, d.presetIndex, d.backgroundIndex, d.contextHash);
+			const id = encodeTokenIdFromComponents(nibbles, derivedParams.shapeIndex, derivedParams.presetIndex, derivedParams.backgroundIndex, derivedParams.contextHash);
 			
 			setMinting(true);
 			setTxHash(null);
 			
 			const abi = parseAbi(['function publicMintDeterministic(uint256 tokenId) public returns (uint256)']);
-			const contract = getContract({ 
-				address: nftConfig.contractAddress as `0x${string}`, 
-				abi, 
-				client: walletClient 
-			});
 			
-			const hash = await contract.write.publicMintDeterministic([id], { 
-				account, 
-				chain: walletClient.chain 
-			});
-			
-			setTxHash(hash);
+			if (isInMiniApp) {
+				// Mint using Farcaster wallet
+				const data = encodeFunctionData({
+					abi,
+					functionName: 'publicMintDeterministic',
+					args: [id]
+				});
+				
+				const hash = await client.request({
+					method: 'eth_sendTransaction',
+					params: [{
+						to: nftConfig.contractAddress,
+						data,
+						chainId: '0x2105', // Base chain ID in hex
+						from: accountAddress
+					}]
+				});
+				
+				setTxHash(hash);
+			} else {
+				// Mint using Rainbow Kit wallet
+				const contract = getContract({ 
+					address: nftConfig.contractAddress as `0x${string}`, 
+					abi, 
+					client: walletClient 
+				});
+				
+				const hash = await contract.write.publicMintDeterministic([id], { 
+					account: accountAddress as `0x${string}`, 
+					chain: walletClient.chain 
+				});
+				
+				setTxHash(hash);
+			}
 		} catch (e: any) {
 			alert(e?.message || String(e));
 		} finally {
@@ -183,25 +268,97 @@ function StudioInner() {
 							</div>
 						</div>
 						<div className="card-body">
-							{!profile ? (
+							{!profile && !activeUser ? (
 								<div style={{ textAlign: 'center' }}>
-									<button className="button" onClick={signInWithGitHub}>
-										Sign in with GitHub
-									</button>
-									<div className="muted" style={{ marginTop: '12px' }}>
-										We&apos;ll use your last 7 weeks of contributions
-									</div>
+									{isInMiniApp ? (
+										<div style={{ display: 'flex', flexDirection: 'column', gap: '16px', alignItems: 'center' }}>
+											<div style={{ fontSize: '0.9rem', color: '#9fb3c8' }}>
+												Enter GitHub username to preview NFT (Mini App mode)
+											</div>
+											<input
+												type="text"
+												value={usernameInput}
+												onChange={(e) => setUsernameInput(e.target.value)}
+												placeholder="GitHub username"
+												style={{
+													padding: '12px 16px',
+													borderRadius: '8px',
+													border: '1px solid rgba(255,255,255,0.2)',
+													background: 'rgba(255,255,255,0.05)',
+													color: 'white',
+													fontSize: '16px',
+													width: '280px',
+													textAlign: 'center'
+												}}
+												onKeyPress={(e) => e.key === 'Enter' && fetchByUsername()}
+											/>
+											<button 
+												className={`button ${isLoadingUsername ? 'loading' : ''}`}
+												onClick={fetchByUsername}
+												disabled={!usernameInput.trim() || isLoadingUsername}
+												style={{ 
+													padding: '12px 24px',
+													opacity: usernameInput.trim() && !isLoadingUsername ? 1 : 0.5
+												}}
+											>
+												{isLoadingUsername ? 'Loading...' : 'Preview NFT'}
+											</button>
+										</div>
+									) : (
+										<>
+											<button className="button" onClick={signInWithGitHub}>
+												Sign in with GitHub
+											</button>
+											<div className="muted" style={{ marginTop: '12px' }}>
+												We&apos;ll use your last 7 weeks of contributions
+											</div>
+										</>
+									)}
 								</div>
 							) : (
-								<div style={{ display: 'flex', alignItems: 'center', gap: 16, justifyContent: 'center' }}>
-									{profile.avatarUrl ? (<img src={profile.avatarUrl} alt={profile.login} width={48} height={48} style={{ borderRadius: '50%' }} />) : null}
-									<div>
-										<div style={{ fontWeight: 600, fontSize: '1.1rem' }}>@{profile.login}</div>
-										<div className="muted">{profile.name}</div>
+								<div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '16px' }}>
+									<div style={{ display: 'flex', alignItems: 'center', gap: 16, justifyContent: 'center' }}>
+										{profile?.avatarUrl ? (<img src={profile.avatarUrl} alt={profile.login || activeUser || 'User'} width={48} height={48} style={{ borderRadius: '50%' }} />) : null}
+										<div>
+											<div style={{ fontWeight: 600, fontSize: '1.1rem' }}>
+												@{profile?.login || activeUser}
+											</div>
+											<div className="muted">{profile?.name || 'Username input'}</div>
+										</div>
 									</div>
+									{isInMiniApp && !profile && (
+										<button 
+											className="button" 
+											onClick={() => {
+												setActiveUser(null);
+												setGrid(null);
+												setPeriod(null);
+												setUsernameInput('');
+												setUsernameSuccess(false);
+											}}
+											style={{ 
+												padding: '8px 16px',
+												fontSize: '0.9rem',
+												background: 'rgba(255,255,255,0.1)',
+												border: '1px solid rgba(255,255,255,0.2)'
+											}}
+										>
+											Try Different Username
+										</button>
+									)}
 								</div>
 							)}
 							{fetchError && <div className="muted" style={{ marginTop: '12px', color: 'crimson' }}>{fetchError}</div>}
+							{usernameSuccess && isInMiniApp && (
+								<div className="muted" style={{ marginTop: '12px', color: '#00ff88' }}>
+									✅ Successfully loaded contributions for @{activeUser}
+								</div>
+							)}
+							{derivedParams && (
+								<div className="muted" style={{ marginTop: '12px', fontSize: '0.9rem' }}>
+									🔧 Preview Settings: Shape {derivedParams.shapeIndex}, Palette {derivedParams.presetIndex}, Background {derivedParams.backgroundIndex}
+								</div>
+							)}
 						</div>
 					</section>
 
