@@ -44,6 +44,7 @@ function TestStudioInner() {
     const cols = full[0]?.length ?? 0;
     const weekStart: string[] = json.weekStartDates || [];
     const weekEnd: string[] = json.weekEndDates || [];
+
     if (Array.isArray(full) && cols >= 7) {
       const startIndex = 0;
       const endIndex = startIndex + 6;

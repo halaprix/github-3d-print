@@ -5,6 +5,16 @@ export const dynamic = 'force-static';
 
 const GITHUB_GRAPHQL_URL = 'https://api.github.com/graphql';
 
+type ContributionDay = { contributionCount: number; color: string; date: string };
+type Week = { contributionDays: ContributionDay[] };
+type User = {
+  name: string;
+  login: string;
+  avatarUrl: string;
+  url: string;
+  contributionsCollection: { contributionCalendar: { totalContributions: number; weeks: Week[] } };
+};
+
 export async function GET(_req: NextRequest, { params }: { params: { username: string } }) {
   const username = params.username;
   if (!username) return NextResponse.json({ error: 'username required' }, { status: 400 });
@@ -46,8 +56,8 @@ export async function GET(_req: NextRequest, { params }: { params: { username: s
   }
 
   const data = await resp.json();
-  const user = data?.data?.user;
-  const weeks = user?.contributionsCollection?.contributionCalendar?.weeks ?? [];
+  const user = data?.data?.user as User;
+  const weeks = (user?.contributionsCollection?.contributionCalendar?.weeks ?? []).filter(week => week.contributionDays.length === 7);
   const rows = 7;
   const cols = weeks.length;
   const grid: number[][] = Array.from({ length: rows }, () => Array.from({ length: cols }, () => 0));
