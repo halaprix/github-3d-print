@@ -1,24 +1,24 @@
 import { PRESET_PALETTES } from '@/lib/palettes';
-import { BACKGROUND_THEMES } from '@/lib/backgrounds';
+import { BACKGROUND_THEMES, BackgroundTheme } from '@/lib/backgrounds';
 
 // Token ID bit layout constants for easier maintenance
-// FIXED: Corrected bit allocation to match actual palette/background counts
-// - Preset: 4 bits (0-15) for 16 palettes (was 3 bits, only 8 palettes)
-// - Background: 3 bits (0-7) for 8 backgrounds (was 4 bits, 16 backgrounds)
+// UPDATED: Background now uses 4 bits to support 16 backgrounds (0-15)
+// - Preset: 4 bits (0-15) for 16 palettes
+// - Background: 4 bits (0-15) for 16 backgrounds (was 3 bits, now 4 bits)
 export const TOKEN_ID_LAYOUT = {
 	GRID_START: 0,
 	GRID_END: 195,        // 49 * 4 - 1
 	SHAPE_START: 196,
 	SHAPE_END: 199,       // 4 bits
 	PRESET_START: 200,
-	PRESET_END: 203,      // 4 bits (FIXED: was 3 bits, now 4 bits for 16 palettes)
+	PRESET_END: 203,      // 4 bits for 16 palettes
 	BACKGROUND_START: 204,
-	BACKGROUND_END: 206,  // 3 bits (FIXED: was 4 bits, now 3 bits for 8 backgrounds)
-	CONTEXT_START: 207,
-	CONTEXT_END: 238,     // 32 bits
-	VERSION_START: 239,
-	VERSION_END: 242,     // 4 bits
-	TOTAL_BITS: 242
+	BACKGROUND_END: 207,  // 4 bits for 16 backgrounds (UPDATED: was 3 bits)
+	CONTEXT_START: 208,
+	CONTEXT_END: 239,     // 32 bits (shifted by 1 bit)
+	VERSION_START: 240,
+	VERSION_END: 243,     // 4 bits (shifted by 1 bit)
+	TOTAL_BITS: 243
 } as const;
 
 export type Period = { start: string; end: string } | null;
@@ -38,6 +38,10 @@ export function deriveParams(user: string, period: Period): { shapeIndex: number
 	const shapeIndex = hash & 0xf; // 0..15 (4 bits)
 	const presetIndex = (hash >>> 4) % Math.max(1, PRESET_PALETTES.length);
 	const backgroundIndex = (hash >>> 8) % Math.max(1, BACKGROUND_THEMES.length);
+	
+	// Debug: sprawdź wygenerowane wartości (uncomment for debugging)
+	// console.log('🔧 deriveParams debug:', { user, period, key, hash: hash.toString(16), shapeIndex, presetIndex, backgroundIndex });
+	
 	return { shapeIndex, presetIndex, backgroundIndex, contextHash: hash };
 }
 
@@ -66,10 +70,10 @@ export function quantizeToNibbles(grid: number[][]): number[][] {
  * New layout ensures no overlap and correct allocation:
  * - Grid: bits 0-195 (49 * 4 bits)
  * - Shape: bits 196-199 (4 bits)
- * - Preset: bits 200-203 (4 bits) - FIXED: now supports 16 palettes
- * - Background: bits 204-206 (3 bits) - FIXED: now supports 8 backgrounds
- * - Context Hash: bits 207-238 (32 bits)
- * - Version: bits 239-242 (4 bits)
+ * - Preset: bits 200-203 (4 bits) - supports 16 palettes
+ * - Background: bits 204-207 (4 bits) - UPDATED: now supports 16 backgrounds
+ * - Context Hash: bits 208-239 (32 bits) - shifted by 1 bit
+ * - Version: bits 240-243 (4 bits) - shifted by 1 bit
  */
 export function encodeTokenIdFromComponents(nibbleGrid: number[][], shapeIndex: number, presetIndex: number, backgroundIndex: number, contextHash: number): bigint {
 	let id = 0n;
@@ -86,11 +90,91 @@ export function encodeTokenIdFromComponents(nibbleGrid: number[][], shapeIndex: 
 	// Pack metadata using layout constants for consistency
 	id |= BigInt(shapeIndex & 0xf) << BigInt(TOKEN_ID_LAYOUT.SHAPE_START);
 	id |= BigInt(presetIndex & 0xf) << BigInt(TOKEN_ID_LAYOUT.PRESET_START);      // FIXED: 4 bits for 16 palettes
-	id |= BigInt(backgroundIndex & 0x7) << BigInt(TOKEN_ID_LAYOUT.BACKGROUND_START); // FIXED: 3 bits for 8 backgrounds
+	id |= BigInt(backgroundIndex & 0xf) << BigInt(TOKEN_ID_LAYOUT.BACKGROUND_START); // UPDATED: 4 bits for 16 backgrounds
 	id |= BigInt(contextHash >>> 0) << BigInt(TOKEN_ID_LAYOUT.CONTEXT_START);
 	id |= 1n << BigInt(TOKEN_ID_LAYOUT.VERSION_START); // version 1
 	
 	return id;
+}
+
+/**
+ * Convert CSS background to SVG-compatible format
+ */
+function convertBackgroundToSvg(background: BackgroundTheme, width: number, height: number): { bgFill: string; bgDefs: string } {
+	const value = background.value;
+	
+	if (background.type === 'solid') {
+		// Solid colors work directly
+		return { bgFill: value, bgDefs: '' };
+	}
+	
+	if (background.type === 'gradient' || background.type === 'pattern') {
+		// Parse CSS gradient and convert to SVG
+		const gradientId = `bg-${background.id}`;
+		
+		if (value.includes('linear-gradient')) {
+			// Parse linear gradient: linear-gradient(135deg, #0a0a0f 0%, #4a0e4a 100%)
+			const match = value.match(/linear-gradient\(([^)]+)\)/);
+			if (match) {
+				const parts = match[1].split(',').map(p => p.trim());
+				const angle = parts[0].includes('deg') ? parseFloat(parts[0]) : 135;
+				const stops = parts.slice(1);
+				
+				// Convert angle to SVG coordinates
+				const rad = (angle - 90) * Math.PI / 180;
+				const x1 = 50 + 50 * Math.cos(rad);
+				const y1 = 50 + 50 * Math.sin(rad);
+				const x2 = 50 - 50 * Math.cos(rad);
+				const y2 = 50 - 50 * Math.sin(rad);
+				
+				const stopElements = stops.map(stop => {
+					const stopMatch = stop.match(/(#[0-9a-fA-F]{6}|#[0-9a-fA-F]{3})\s+(\d+)%/);
+					if (stopMatch) {
+						return `<stop offset="${stopMatch[2]}%" stop-color="${stopMatch[1]}"/>`;
+					}
+					return '';
+				}).join('');
+				
+				const bgDefs = `<defs><linearGradient id="${gradientId}" x1="${x1}%" y1="${y1}%" x2="${x2}%" y2="${y2}%">${stopElements}</linearGradient></defs>`;
+				return { bgFill: `url(#${gradientId})`, bgDefs };
+			}
+		}
+		
+		if (value.includes('radial-gradient')) {
+			// Parse radial gradient: radial-gradient(circle at 25% 25%, #0a0f1a 0%, #00E5FF 100%)
+			const match = value.match(/radial-gradient\(([^)]+)\)/);
+			if (match) {
+				const parts = match[1].split(',').map(p => p.trim());
+				let cx = '50%', cy = '50%';
+				
+				// Extract center position if specified
+				const positionPart = parts.find(p => p.includes('at'));
+				if (positionPart) {
+					const posMatch = positionPart.match(/at\s+(\d+%)\s+(\d+%)/);
+					if (posMatch) {
+						cx = posMatch[1];
+						cy = posMatch[2];
+					}
+				}
+				
+				// Extract color stops
+				const colorParts = parts.filter(p => p.includes('#') || p.match(/\d+%/));
+				const stopElements = colorParts.map(stop => {
+					const stopMatch = stop.match(/(#[0-9a-fA-F]{6}|#[0-9a-fA-F]{3})\s+(\d+)%/);
+					if (stopMatch) {
+						return `<stop offset="${stopMatch[2]}%" stop-color="${stopMatch[1]}"/>`;
+					}
+					return '';
+				}).join('');
+				
+				const bgDefs = `<defs><radialGradient id="${gradientId}" cx="${cx}" cy="${cy}" r="70%">${stopElements}</radialGradient></defs>`;
+				return { bgFill: `url(#${gradientId})`, bgDefs };
+			}
+		}
+	}
+	
+	// Fallback to solid color
+	return { bgFill: '#0a0f1a', bgDefs: '' };
 }
 
 export function buildGridSvg(nibbleGrid: number[][], palette: string[], shapeIndex: number, backgroundIndex: number = 0): string {
@@ -98,8 +182,12 @@ export function buildGridSvg(nibbleGrid: number[][], palette: string[], shapeInd
 	const cell = 40, gap = 6;
 	const width = cols * cell + (cols - 1) * gap;
 	const height = rows * cell + (rows - 1) * gap;
+	
 	const background = BACKGROUND_THEMES[backgroundIndex] || BACKGROUND_THEMES[0];
-	const bg = background.value;
+	// console.log('🎨 Selected background:', background); // Debug
+	
+	// Convert CSS gradients to SVG format
+	const { bgFill, bgDefs } = convertBackgroundToSvg(background, width, height);
 	const shapes: string[] = [];
 	const inset = Math.max(1, Math.floor(cell * 0.12));
 	const draw = (vx: number, vy: number, fill: string) => {
@@ -197,7 +285,7 @@ export function buildGridSvg(nibbleGrid: number[][], palette: string[], shapeInd
 			shapes.push(draw(vx, vy, fill));
 		}
 	}
-	return `<?xml version="1.0" encoding="UTF-8"?>\n<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" shape-rendering="geometricPrecision" preserveAspectRatio="xMidYMid meet">\n<rect x="0" y="0" width="${width}" height="${height}" fill="${bg}"/>\n${shapes.join('\n')}\n</svg>`;
+	return `<?xml version="1.0" encoding="UTF-8"?>\n<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" shape-rendering="geometricPrecision" preserveAspectRatio="xMidYMid meet">\n${bgDefs}\n<rect x="0" y="0" width="${width}" height="${height}" fill="${bgFill}"/>\n${shapes.join('\n')}\n</svg>`;
 }
 
 /**
@@ -206,7 +294,7 @@ export function buildGridSvg(nibbleGrid: number[][], palette: string[], shapeInd
  */
 export function decodeTokenId(id: bigint): { grid: number[][]; shapeIndex: number; presetIndex: number; backgroundIndex: number; contextHash: bigint } | null {
 	try {
-		// Extract version from bits 239-242 (4 bits)
+		// Extract version from bits 240-243 (4 bits) - UPDATED: shifted by 1 bit
 		const version = Number((id >> BigInt(TOKEN_ID_LAYOUT.VERSION_START)) & 0xfn);
 		
 		// Validate version
@@ -218,11 +306,11 @@ export function decodeTokenId(id: bigint): { grid: number[][]; shapeIndex: numbe
 		// Extract metadata components using layout constants
 		const shapeIndex = Number((id >> BigInt(TOKEN_ID_LAYOUT.SHAPE_START)) & 0xfn);
 		const presetIndex = Number((id >> BigInt(TOKEN_ID_LAYOUT.PRESET_START)) & 0xfn);      // FIXED: 4 bits for 16 palettes
-		const backgroundIndex = Number((id >> BigInt(TOKEN_ID_LAYOUT.BACKGROUND_START)) & 0x7n); // FIXED: 3 bits for 8 backgrounds
+		const backgroundIndex = Number((id >> BigInt(TOKEN_ID_LAYOUT.BACKGROUND_START)) & 0xfn); // UPDATED: 4 bits for 16 backgrounds
 		const contextHash = (id >> BigInt(TOKEN_ID_LAYOUT.CONTEXT_START)) & 0xffffffffn;
 		
 		// Validate indices are within bounds
-		if (shapeIndex >= 16 || presetIndex >= 16 || backgroundIndex >= 8) { // FIXED: preset 16, background 8
+		if (shapeIndex >= 16 || presetIndex >= 16 || backgroundIndex >= 16) { // UPDATED: background now 16
 			console.log(`Token ID indices out of bounds: shape=${shapeIndex}, preset=${presetIndex}, background=${backgroundIndex}`);
 			return null;
 		}
@@ -279,7 +367,7 @@ export function debugTokenId(tokenId: bigint): void {
 	const version = Number((tokenId >> BigInt(TOKEN_ID_LAYOUT.VERSION_START)) & 0xfn);
 	const shape = Number((tokenId >> BigInt(TOKEN_ID_LAYOUT.SHAPE_START)) & 0xfn);
 	const preset = Number((tokenId >> BigInt(TOKEN_ID_LAYOUT.PRESET_START)) & 0xfn);      // FIXED: 4 bits
-	const background = Number((tokenId >> BigInt(TOKEN_ID_LAYOUT.BACKGROUND_START)) & 0x7n); // FIXED: 3 bits
+	const background = Number((tokenId >> BigInt(TOKEN_ID_LAYOUT.BACKGROUND_START)) & 0xfn); // UPDATED: 4 bits for 16 backgrounds
 	const context = Number((tokenId >> BigInt(TOKEN_ID_LAYOUT.CONTEXT_START)) & 0xffffffffn);
 	
 	console.log('Raw bit extraction:');
@@ -290,8 +378,4 @@ export function debugTokenId(tokenId: bigint): void {
 	console.log(`  Context (bits ${TOKEN_ID_LAYOUT.CONTEXT_START}-${TOKEN_ID_LAYOUT.CONTEXT_END}): ${context}`);
 	console.log('=====================================');
 }
-
-// Test the problematic token ID that was causing issues
-// Uncomment this to test: debugTokenId(825282336020713553836743218312421266391369350877941062520538893935321634n);
-
 
