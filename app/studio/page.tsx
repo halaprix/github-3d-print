@@ -173,7 +173,17 @@ function StudioInner() {
 			setMinting(true);
 			setTxHash(null);
 			
-			const abi = parseAbi(['function publicMintDeterministic(uint256 tokenId) public returns (uint256)']);
+			const abi = parseAbi([
+				'function publicMintDeterministic(uint256 tokenId) public payable returns (uint256)',
+				'function mintPrice() public view returns (uint256)'
+			]);
+			
+			// Read mint price from contract first
+			const mintPrice = await publicClient!.readContract({
+				address: nftConfig.contractAddress as `0x${string}`,
+				abi,
+				functionName: 'mintPrice'
+			});
 			
 			if (isInMiniApp) {
 				// Mint using Farcaster wallet
@@ -188,6 +198,7 @@ function StudioInner() {
 					params: [{
 						to: nftConfig.contractAddress,
 						data,
+						value: `0x${mintPrice.toString(16)}`, // Convert wei to hex
 						chainId: '0x2105', // Base chain ID in hex
 						from: accountAddress
 					}]
@@ -204,8 +215,9 @@ function StudioInner() {
 				
 				const hash = await contract.write.publicMintDeterministic([id], { 
 					account: accountAddress as `0x${string}`, 
-					chain: walletClient.chain 
-				});
+					chain: walletClient.chain,
+					value: mintPrice // Use dynamic mint price
+				} as any);
 				
 				setTxHash(hash);
 			}

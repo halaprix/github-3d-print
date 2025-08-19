@@ -3,7 +3,7 @@ pragma solidity ^0.8.24;
 
 import {Script} from "forge-std/Script.sol";
 import {console2} from "forge-std/console2.sol";
-import {Github3DPrintNFT} from "../src/Github3DPrintNFT.sol";
+import {GridGit} from "../src/Github3DPrintNFT.sol";
 
 contract Deploy is Script {
     function run() public {
@@ -13,10 +13,10 @@ contract Deploy is Script {
         string memory symbol_ = vm.envOr("SYMBOL", string("POWS"));
 
         vm.startBroadcast(deployer);
-        Github3DPrintNFT nft = new Github3DPrintNFT(name_, symbol_, baseUri, deployer);
+        GridGit nft = new GridGit(name_, symbol_, baseUri, deployer);
         vm.stopBroadcast();
 
         // Log address
-        console2.log("Github3DPrintNFT deployed at:", address(nft));
+        console2.log("GridGit deployed at:", address(nft));
     }
 }
