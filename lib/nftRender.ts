@@ -343,3 +343,44 @@ export function debugTokenId(tokenId: bigint): void {
 	console.log('=====================================');
 }
 
+/**
+ * Map a background index to an available background index
+ * This ensures we always get a valid background even if the original index points to an unavailable one
+ */
+export function mapBackgroundIndex(backgroundIndex: number): number {
+  const availableBackgrounds = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
+  return availableBackgrounds[backgroundIndex % availableBackgrounds.length];
+}
+
+/**
+ * Map a shape index to an available shape index
+ * This ensures we always get a valid shape even if the original index points to an unavailable one
+ */
+export function mapShapeIndex(shapeIndex: number): number {
+  const availableShapes = [0, 1, 2, 3, 4, 5];
+  return availableShapes[shapeIndex % availableShapes.length];
+}
+
+/**
+ * Get the actual background that will be rendered for a given background index
+ * This accounts for the mapping from unavailable to available backgrounds
+ */
+export function getActualBackground(backgroundIndex: number): BackgroundTheme {
+  const mappedIndex = mapBackgroundIndex(backgroundIndex);
+  return BACKGROUND_THEMES[mappedIndex] || BACKGROUND_THEMES[0];
+}
+
+/**
+ * Get the actual shape name that will be rendered for a given shape index
+ * This accounts for the mapping from unavailable to available shapes
+ */
+export function getActualShapeName(shapeIndex: number): string {
+  const shapeNames = [
+    'Rounded Square', 'Square', 'Circle', 'Diamond', 'Hexagon', 'Triangle',
+    'Oval', 'Rhombus', 'Cross', 'Upside Triangle', 'Semicircle', 'Arrow',
+    'Star', 'Wave', 'Diamond', 'Circle'
+  ];
+
+  const mappedIndex = mapShapeIndex(shapeIndex);
+  return shapeNames[mappedIndex] || 'Rounded Square';
+}
