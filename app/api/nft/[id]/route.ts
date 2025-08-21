@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { PRESET_PALETTES } from '@/lib/palettes';
 import { BACKGROUND_THEMES } from '@/lib/backgrounds';
-import { buildGridSvg, decodeTokenId } from '@/lib/nftRender';
+import { buildGridSvg, decodeTokenId, getActualBackground, getActualShapeName } from '@/lib/nftRender';
 
 export const dynamic = 'force-dynamic';
 
@@ -19,22 +19,16 @@ export async function GET(_req: NextRequest, { params }: { params: { id: string 
   const imageB64 = Buffer.from(svg, 'utf8').toString('base64');
   const image = `data:image/svg+xml;base64,${imageB64}`;
   const name = `GridGit #${idStr}`;
-  
-  const shapeNames = [
-    'Rounded Square', 'Square', 'Circle', 'Diamond', 'Hexagon', 'Triangle',
-    'Oval', 'Rhombus', 'Cross', 'Upside Triangle', 'Semicircle', 'Arrow',
-    'Star', 'Wave', 'Diamond', 'Circle'
-  ];
-  
+
   const metadata = {
     name,
     description: 'Deterministic on-chain SVG from your GitHub heatmap. Token ID encodes grid, shape, palette, and background.',
     image,
     image_data: svg,
     attributes: [
-      { trait_type: 'Shape', value: shapeNames[shapeIndex] ?? 'Rounded Square' },
+      { trait_type: 'Shape', value: getActualShapeName(shapeIndex) },
       { trait_type: 'Color Palette', value: PRESET_PALETTES[presetIndex]?.name ?? 'Unknown' },
-      { trait_type: 'Background', value: BACKGROUND_THEMES[backgroundIndex]?.name ?? 'Unknown' },
+      { trait_type: 'Background', value: getActualBackground(backgroundIndex).name },
       { display_type: 'number', trait_type: 'ContextHash', value: Number(contextHash) }
     ]
   } as const;
