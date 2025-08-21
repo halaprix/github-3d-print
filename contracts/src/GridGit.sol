@@ -13,6 +13,7 @@ contract GridGit is ERC721, Ownable, ERC721Burnable {
     string private _baseTokenURI;
     bool public publicMintEnabled;
     EnumerableSet.UintSet private _mintedTokens;
+    uint256 public mintPrice;
 
     error GridGit__NotOwner();
     error GridGit__NotBurnable();
@@ -73,5 +74,9 @@ contract GridGit is ERC721, Ownable, ERC721Burnable {
     function withdraw() external onlyOwner {
         (bool success,) = owner().call{value: address(this).balance}("");
         if (!success) revert GridGit__WithdrawFailed();
+    }
+
+    function setMintPrice(uint256 newMintPrice) external onlyOwner {
+        mintPrice = newMintPrice;
     }
 }

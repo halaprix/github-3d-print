@@ -49,7 +49,7 @@ export function HorizontalNav() {
             </Link>
           ))}
           <a
-            href="https://opensea.io/collection/gridgit"
+            href="https://opensea.io/collection/gridgit-663877824"
             target="_blank"
             rel="noreferrer"
             className="nav-link text-sm font-medium transition-all duration-200"
@@ -109,7 +109,7 @@ export function HorizontalNav() {
             </Link>
           ))}
           <a
-            href="https://opensea.io/collection/gridgit"
+            href="https://opensea.io/collection/gridgit-663877824"
             target="_blank"
             rel="noreferrer"
             className="mobile-nav-link"
