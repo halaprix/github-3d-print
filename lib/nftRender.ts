@@ -98,174 +98,135 @@ export function encodeTokenIdFromComponents(nibbleGrid: number[][], shapeIndex: 
 }
 
 /**
- * Convert CSS background to SVG-compatible format
+ * Convert background theme to SVG-compatible format using pre-defined SVG definitions
  */
-function convertBackgroundToSvg(background: BackgroundTheme, width: number, height: number): { bgFill: string; bgDefs: string } {
-	const value = background.value;
-	
+function convertBackgroundToSvg(background: BackgroundTheme, width: number, height: number): { bgFill: string; bgDefs: string; bgFilter: string; bgOverlay: string } {
 	if (background.type === 'solid') {
-		// Solid colors work directly
-		return { bgFill: value, bgDefs: '' };
+		return {
+			bgFill: background.value,
+			bgDefs: '',
+			bgFilter: '',
+			bgOverlay: ''
+		};
 	}
-	
-	if (background.type === 'gradient' || background.type === 'pattern') {
-		// Parse CSS gradient and convert to SVG
-		const gradientId = `bg-${background.id}`;
-		
-		if (value.includes('linear-gradient')) {
-			// Parse linear gradient: linear-gradient(135deg, #0a0a0f 0%, #4a0e4a 100%)
-			const match = value.match(/linear-gradient\(([^)]+)\)/);
-			if (match) {
-				const parts = match[1].split(',').map(p => p.trim());
-				const angle = parts[0].includes('deg') ? parseFloat(parts[0]) : 135;
-				const stops = parts.slice(1);
-				
-				// Convert angle to SVG coordinates
-				const rad = (angle - 90) * Math.PI / 180;
-				const x1 = 50 + 50 * Math.cos(rad);
-				const y1 = 50 + 50 * Math.sin(rad);
-				const x2 = 50 - 50 * Math.cos(rad);
-				const y2 = 50 - 50 * Math.sin(rad);
-				
-				const stopElements = stops.map(stop => {
-					const stopMatch = stop.match(/(#[0-9a-fA-F]{6}|#[0-9a-fA-F]{3})\s+(\d+)%/);
-					if (stopMatch) {
-						return `<stop offset="${stopMatch[2]}%" stop-color="${stopMatch[1]}"/>`;
-					}
-					return '';
-				}).join('');
-				
-				const bgDefs = `<defs><linearGradient id="${gradientId}" x1="${x1}%" y1="${y1}%" x2="${x2}%" y2="${y2}%">${stopElements}</linearGradient></defs>`;
-				return { bgFill: `url(#${gradientId})`, bgDefs };
+
+	if (background.type === 'svg') {
+		let bgDefs = background.svgDefs || '';
+		let bgOverlay = '';
+
+		// Handle special overlay cases
+		if (background.id === 4) { // Glassmorphic
+			bgOverlay = `<rect x="0" y="0" width="${width}" height="${height}" fill="url(#bgGrad4)"/>`;
+		} else if (background.id === 13) { // Frog Green Strata
+			bgOverlay = `<rect x="0" y="0" width="${width}" height="${height}" fill="url(#bgGrad13)"/>`;
+		} else if (background.id === 5) { // Biome Grid base
+			bgOverlay = `<rect x="0" y="0" width="${width}" height="${height}" fill="${background.baseColor}"/>`;
+		} else if (background.id === 12) { // Golden Mesh base
+			bgOverlay = `<rect x="0" y="0" width="${width}" height="${height}" fill="${background.baseColor}"/>`;
+		} else if (background.id === 3) { // Icy Glitch base
+			bgOverlay = `<rect x="0" y="0" width="${width}" height="${height}" fill="${background.baseColor}"/>`;
+		}
+
+		// Handle gradient fills properly - extract url reference without quotes
+		let bgFill = background.value;
+		if (background.svgFill) {
+			if (background.svgFill.includes('url(')) {
+				// For gradients and patterns, extract just the url reference
+				const urlMatch = background.svgFill.match(/url\(#([^)]+)\)/);
+				bgFill = urlMatch ? `url(#${urlMatch[1]})` : background.value;
+			} else {
+				// For solid colors, extract just the color value
+				const colorMatch = background.svgFill.match(/fill="([^"]*)"/);
+				bgFill = colorMatch ? colorMatch[1] : background.value;
 			}
 		}
-		
-		if (value.includes('radial-gradient')) {
-			// Parse radial gradient: radial-gradient(circle at 25% 25%, #0a0f1a 0%, #00E5FF 100%)
-			const match = value.match(/radial-gradient\(([^)]+)\)/);
-			if (match) {
-				const parts = match[1].split(',').map(p => p.trim());
-				let cx = '50%', cy = '50%';
-				
-				// Extract center position if specified
-				const positionPart = parts.find(p => p.includes('at'));
-				if (positionPart) {
-					const posMatch = positionPart.match(/at\s+(\d+%)\s+(\d+%)/);
-					if (posMatch) {
-						cx = posMatch[1];
-						cy = posMatch[2];
-					}
-				}
-				
-				// Extract color stops
-				const colorParts = parts.filter(p => p.includes('#') || p.match(/\d+%/));
-				const stopElements = colorParts.map(stop => {
-					const stopMatch = stop.match(/(#[0-9a-fA-F]{6}|#[0-9a-fA-F]{3})\s+(\d+)%/);
-					if (stopMatch) {
-						return `<stop offset="${stopMatch[2]}%" stop-color="${stopMatch[1]}"/>`;
-					}
-					return '';
-				}).join('');
-				
-				const bgDefs = `<defs><radialGradient id="${gradientId}" cx="${cx}" cy="${cy}" r="70%">${stopElements}</radialGradient></defs>`;
-				return { bgFill: `url(#${gradientId})`, bgDefs };
-			}
-		}
+
+		return {
+			bgFill: bgFill,
+			bgDefs: bgDefs,
+			bgFilter: background.svgFilter || '',
+			bgOverlay: bgOverlay
+		};
 	}
-	
-	// Fallback to solid color
-	return { bgFill: '#0a0f1a', bgDefs: '' };
+
+	// Fallback for old gradient/pattern types
+	return {
+		bgFill: '#0a0f1a',
+		bgDefs: '',
+		bgFilter: '',
+		bgOverlay: ''
+	};
 }
 
-export function buildGridSvg(nibbleGrid: number[][], palette: string[], shapeIndex: number, backgroundIndex: number = 0): string {
+export function buildGridSvg(nibbleGrid: number[][], palette: string[], shapeIndex: number, backgroundIndex: number = 0, contextHash: bigint = 0n): string {
 	const rows = 7, cols = 7;
-	const cell = 40, gap = 6;
-	const width = cols * cell + (cols - 1) * gap;
-	const height = rows * cell + (rows - 1) * gap;
-	
-	const background = BACKGROUND_THEMES[backgroundIndex] || BACKGROUND_THEMES[0];
+	const SVG_SIZE = 800; // Base size for calculations (will scale down to 80%)
+	const padding = SVG_SIZE * 0.1; // 10% padding like in the demo
+	const contentWidth = SVG_SIZE - padding * 2;
+	const cellSize = contentWidth / 7;
+	const gap = cellSize * 0.15; // 15% gap like in the demo
+	const cell = cellSize - gap;
+	const width = SVG_SIZE;
+	const height = SVG_SIZE;
+
+	const availableBackgrounds = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
+	const mappedBackgroundIndex = availableBackgrounds[backgroundIndex % availableBackgrounds.length];
+	const background = BACKGROUND_THEMES[mappedBackgroundIndex] || BACKGROUND_THEMES[0];
 	// console.log('🎨 Selected background:', background); // Debug
-	
-	// Convert CSS gradients to SVG format
-	const { bgFill, bgDefs } = convertBackgroundToSvg(background, width, height);
+
+	// Convert background to SVG format using new system
+	const { bgFill, bgDefs, bgFilter, bgOverlay } = convertBackgroundToSvg(background, width, height);
 	const shapes: string[] = [];
 	const inset = Math.max(1, Math.floor(cell * 0.12));
-	const draw = (vx: number, vy: number, fill: string) => {
+	const draw = (vx: number, vy: number, fill: string, opacity: number = 1, contextHash: number = 0) => {
 		const cx = vx + cell / 2;
 		const cy = vy + cell / 2;
-		switch (shapeIndex) {
-			case 0: return `<rect x="${vx}" y="${vy}" width="${cell}" height="${cell}" rx="${Math.floor(cell * 0.22)}" ry="${Math.floor(cell * 0.22)}" fill="${fill}"/>`;
-			case 1: return `<rect x="${vx}" y="${vy}" width="${cell}" height="${cell}" fill="${fill}"/>`;
+
+		// Helper function to create deterministic random for shape 5
+		const deterministicRandom = (seed: number, max: number) => {
+			const x = Math.sin(seed) * 10000;
+			return Math.floor((x - Math.floor(x)) * max);
+		};
+
+		// Available shapes mapping: [0, 1, 2, 4, 14] + special case 5
+		const availableShapes = [0, 1, 2, 3, 4, 5];
+		const mappedShapeIndex = availableShapes[shapeIndex % availableShapes.length];
+
+		switch (mappedShapeIndex) {
+			case 0: return `<rect x="${vx}" y="${vy}" width="${cell}" height="${cell}" rx="${Math.floor(cell * 0.22)}" ry="${Math.floor(cell * 0.22)}" fill="${fill}" fill-opacity="${opacity}"/>`;
+			case 1: return `<rect x="${vx}" y="${vy}" width="${cell}" height="${cell}" fill="${fill}" fill-opacity="${opacity}"/>`;
 			case 2: {
 				const r = Math.max(1, cell / 2 - inset);
-				return `<circle cx="${cx}" cy="${cy}" r="${r}" fill="${fill}"/>`;
+				return `<circle cx="${cx}" cy="${cy}" r="${r}" fill="${fill}" fill-opacity="${opacity}"/>`;
 			}
 			case 3: {
-				const p = [ `${cx},${vy + inset}`, `${vx + cell - inset},${cy}`, `${cx},${vy + cell - inset}`, `${vx + inset},${cy}` ].join(' ');
-				return `<polygon points="${p}" fill="${fill}"/>`;
-			}
-			case 4: {
 				const r = Math.max(1, cell / 2 - inset);
 				const a = 0.866025403784;
 				const p = [ `${cx - a * r},${cy - r / 2}`, `${cx},${cy - r}`, `${cx + a * r},${cy - r / 2}`, `${cx + a * r},${cy + r / 2}`, `${cx},${cy + r}`, `${cx - a * r},${cy + r / 2}` ].join(' ');
-				return `<polygon points="${p}" fill="${fill}"/>`;
+				return `<polygon points="${p}" fill="${fill}" fill-opacity="${opacity}"/>`;
+			}
+			case 4: {
+				const r = Math.max(1, cell / 2 - inset);
+				const a = 0.7071067811865476;
+				const p = [ `${cx - a * r},${cy - a * r}`, `${cx + a * r},${cy - a * r}`, `${cx + a * r},${cy + a * r}`, `${cx - a * r},${cy + a * r}` ].join(' ');
+				return `<polygon points="${p}" fill="${fill}" fill-opacity="${opacity}"/>`;
 			}
 			case 5: {
-				const p = [ `${cx},${vy + inset}`, `${vx + cell - inset},${vy + cell - inset}`, `${vx + inset},${vy + cell - inset}` ].join(' ');
-				return `<polygon points="${p}" fill="${fill}"/>`;
+				// Special case: randomly choose between shape 0 or 2 (same size, single shape)
+				// Use contextHash to make it deterministic
+				const elementSeed = contextHash + shapeIndex;
+				const shapeType = deterministicRandom(elementSeed, 2); // 0 or 1
+
+				if (shapeType === 0) {
+					// Full-size rounded rectangle (shape 0)
+					return `<rect x="${vx}" y="${vy}" width="${cell}" height="${cell}" rx="${Math.floor(cell * 0.22)}" ry="${Math.floor(cell * 0.22)}" fill="${fill}" fill-opacity="${opacity}"/>`;
+				} else {
+					// Full-size circle (shape 2)
+					const r = Math.max(1, cell / 2 - inset);
+					return `<circle cx="${cx}" cy="${cy}" r="${r}" fill="${fill}" fill-opacity="${opacity}"/>`;
+				}
 			}
-			case 6: {
-				const r = Math.max(1, cell / 2 - inset);
-				return `<ellipse cx="${cx}" cy="${cy}" rx="${r * 1.3}" ry="${r * 0.8}" fill="${fill}"/>`;
-			}
-			case 7: {
-				const r = Math.max(1, cell / 2 - inset);
-				const a = 0.7071067811865476;
-				const p = [ `${cx - a * r},${cy - a * r}`, `${cx + a * r},${cy - a * r}`, `${cx + a * r},${cy + a * r}`, `${cx - a * r},${cy + a * r}` ].join(' ');
-				return `<polygon points="${p}" fill="${fill}"/>`;
-			}
-			case 8: {
-				const r = Math.max(1, cell / 2 - inset);
-				const p = [ `${cx},${vy + inset}`, `${vx + cell - inset},${cy}`, `${cx},${vy + cell - inset}`, `${vx + inset},${cy}` ].join(' ');
-				return `<polygon points="${p}" fill="${fill}"/>`;
-			}
-			case 9: {
-				const r = Math.max(1, cell / 2 - inset);
-				const a = 0.866025403784;
-				const p = [ `${cx},${vy + inset}`, `${cx - a * r},${cy + r / 2}`, `${cx + a * r},${cy + r / 2}` ].join(' ');
-				return `<polygon points="${p}" fill="${fill}"/>`;
-			}
-			case 10: {
-				const r = Math.max(1, cell / 2 - inset);
-				return `<path d="M ${cx - r} ${cy} A ${r} ${r} 0 0 1 ${cx + r} ${cy} A ${r} ${r} 0 0 1 ${cx - r} ${cy} Z" fill="${fill}"/>`;
-			}
-			case 11: {
-				const r = Math.max(1, cell / 2 - inset);
-				const a = 0.7071067811865476;
-				const p = [ `${cx},${vy + inset}`, `${cx + a * r},${cy - a * r}`, `${cx},${vy + cell - inset}`, `${cx - a * r},${cy - a * r}` ].join(' ');
-				return `<polygon points="${p}" fill="${fill}"/>`;
-			}
-			case 12: {
-				const r = Math.max(1, cell / 2 - inset);
-				const a = 0.866025403784;
-				const p = [ `${cx},${vy + inset}`, `${cx - a * r},${cy - r / 2}`, `${cx + a * r},${cy - r / 2}`, `${cx + a * r},${cy + r / 2}`, `${cx - a * r},${cy + r / 2}` ].join(' ');
-				return `<polygon points="${p}" fill="${fill}"/>`;
-			}
-			case 13: {
-				const r = Math.max(1, cell / 2 - inset);
-				return `<path d="M ${cx - r} ${cy} Q ${cx} ${vy + inset} ${cx + r} ${cy} Q ${cx} ${vy + cell - inset} ${cx - r} ${cy} Z" fill="${fill}"/>`;
-			}
-			case 14: {
-				const r = Math.max(1, cell / 2 - inset);
-				const a = 0.7071067811865476;
-				const p = [ `${cx - a * r},${cy - a * r}`, `${cx + a * r},${cy - a * r}`, `${cx + a * r},${cy + a * r}`, `${cx - a * r},${cy + a * r}` ].join(' ');
-				return `<polygon points="${p}" fill="${fill}"/>`;
-			}
-			case 15: {
-				const r = Math.max(1, cell / 2 - inset);
-				return `<path d="M ${cx - r} ${cy} A ${r} ${r} 0 0 1 ${cx + r} ${cy} A ${r} ${r} 0 0 1 ${cx - r} ${cy} Z" fill="${fill}"/>`;
-			}
-			default: return `<rect x="${vx}" y="${vy}" width="${cell}" height="${cell}" rx="${Math.floor(cell * 0.22)}" ry="${Math.floor(cell * 0.22)}" fill="${fill}"/>`;
+			default: return `<rect x="${vx}" y="${vy}" width="${cell}" height="${cell}" rx="${Math.floor(cell * 0.22)}" ry="${Math.floor(cell * 0.22)}" fill="${fill}" fill-opacity="${opacity}"/>`;
 		}
 	};
 	const maxNibble = 15;
@@ -278,14 +239,17 @@ export function buildGridSvg(nibbleGrid: number[][], palette: string[], shapeInd
 	};
 	for (let y = 0; y < rows; y++) {
 		for (let x = 0; x < cols; x++) {
-			const vx = x * (cell + gap);
-			const vy = y * (cell + gap);
+			const vx = padding + x * cellSize + gap / 2;
+			const vy = padding + y * cellSize + gap / 2;
 			const nibble = nibbleGrid[y][x] || 0;
 			const fill = colorFor(nibble);
-			shapes.push(draw(vx, vy, fill));
+			const opacity = 0.5 + (nibble / 15) * 0.5; // Like in the demo: 0.5 to 1.0
+			// Pass contextHash for deterministic random shapes
+			const cellContextHash = Number(contextHash) + y * 7 + x;
+			shapes.push(draw(vx, vy, fill, opacity, cellContextHash));
 		}
 	}
-	return `<?xml version="1.0" encoding="UTF-8"?>\n<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" shape-rendering="geometricPrecision" preserveAspectRatio="xMidYMid meet">\n${bgDefs}\n<rect x="0" y="0" width="${width}" height="${height}" fill="${bgFill}"/>\n${shapes.join('\n')}\n</svg>`;
+	return `<?xml version="1.0" encoding="UTF-8"?>\n<svg xmlns="http://www.w3.org/2000/svg" width="80%" height="auto" viewBox="0 0 ${width} ${height}" shape-rendering="geometricPrecision" preserveAspectRatio="xMidYMid meet">\n<defs>\n${bgDefs}\n</defs>\n${bgOverlay}\n<rect x="0" y="0" width="${width}" height="${height}" fill="${bgFill}"/>\n${bgFilter}\n<g>\n${shapes.join('\n')}\n</g>\n</svg>`;
 }
 
 /**

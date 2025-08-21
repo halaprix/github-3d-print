@@ -15,7 +15,7 @@ export async function GET(_req: NextRequest, { params }: { params: { id: string 
   if (!decoded) return NextResponse.json({ error: 'Malformed token id' }, { status: 400 });
   const { grid, shapeIndex, presetIndex, backgroundIndex, contextHash } = decoded;
   const palette = PRESET_PALETTES[presetIndex]?.colors ?? PRESET_PALETTES[0].colors;
-  const svg = buildGridSvg(grid, palette, shapeIndex, backgroundIndex);
+  const svg = buildGridSvg(grid, palette, shapeIndex, backgroundIndex, contextHash);
   const imageB64 = Buffer.from(svg, 'utf8').toString('base64');
   const image = `data:image/svg+xml;base64,${imageB64}`;
   const name = `GridGit #${idStr}`;

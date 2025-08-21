@@ -3,6 +3,7 @@
 import { Suspense, useEffect, useMemo, useState } from 'react';
 import { PRESET_PALETTES as LIB_PRESETS } from '@/lib/palettes';
 import { deriveParams, quantizeToNibbles, encodeTokenIdFromComponents, buildGridSvg } from '@/lib/nftRender';
+import { NFTPreview } from '@/components/nft-preview';
 import { useSearchParams } from 'next/navigation';
 import { HorizontalNav } from '@/components/horizontal-nav';
 
@@ -91,7 +92,7 @@ function TestStudioInner() {
     if (!derivedParams) return '';
     const palette = LIB_PRESETS[derivedParams.presetIndex]?.colors ?? LIB_PRESETS[0].colors;
     const nibbles = quantizeToNibbles(grid!);
-    return buildGridSvg(nibbles, palette, derivedParams.shapeIndex, derivedParams.backgroundIndex);
+    return buildGridSvg(nibbles, palette, derivedParams.shapeIndex, derivedParams.backgroundIndex, BigInt(derivedParams.contextHash));
   }, [derivedParams, grid]);
 
   const tokenId = useMemo(() => {
@@ -200,20 +201,23 @@ function TestStudioInner() {
           {grid && grid.length > 0 && (
             <section className="card">
               <div className="card-header">
-                <div>
-                  <div className="title">🎨 NFT Preview</div>
-                  <div className="subtitle">This is exactly how the NFT will look when minted</div>
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 bg-accent-critical-default rounded-lg flex items-center justify-center text-sm">
+                    🎨
+                  </div>
+                  <div>
+                    <div className="title">NFT Preview</div>
+                    <div className="subtitle">This is exactly how the NFT will look when minted</div>
+                  </div>
                 </div>
               </div>
               <div className="card-body">
-                <div style={{ textAlign: 'center' }}>
-                  <div 
-                    dangerouslySetInnerHTML={{ __html: svg }} 
-                    style={{ 
-                      maxWidth: '400px', 
-                      margin: '0 auto',
-                      filter: 'drop-shadow(0 8px 32px rgba(0,0,0,0.3))'
-                    }}
+                <div className="w-full max-w-4xl mx-auto">
+                  <NFTPreview
+                    user={user}
+                    period={period}
+                    grid={grid}
+                    className="w-full h-max"
                   />
                 </div>
               </div>

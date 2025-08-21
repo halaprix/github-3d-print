@@ -5,6 +5,7 @@ import { getContract, parseAbi, encodeFunctionData } from 'viem';
 import { nftConfig } from '@/lib/nftConfig';
 import { PRESET_PALETTES as LIB_PRESETS } from '@/lib/palettes';
 import { deriveParams, quantizeToNibbles, encodeTokenIdFromComponents, buildGridSvg } from '@/lib/nftRender';
+import { NFTPreview } from '@/components/nft-preview';
 import { HorizontalNav } from '@/components/horizontal-nav';
 import { useAccount, useWalletClient, usePublicClient } from 'wagmi';
 import { useFarcasterMiniApp } from '@/lib/useFarcasterMiniApp';
@@ -106,7 +107,7 @@ function StudioInner() {
 		if (!derivedParams) return '';
 		const palette = LIB_PRESETS[derivedParams.presetIndex]?.colors ?? LIB_PRESETS[0].colors;
 		const nibbles = quantizeToNibbles(grid!);
-		return buildGridSvg(nibbles, palette, derivedParams.shapeIndex, derivedParams.backgroundIndex);
+		return buildGridSvg(nibbles, palette, derivedParams.shapeIndex, derivedParams.backgroundIndex, BigInt(derivedParams.contextHash));
 	}, [derivedParams, grid]);
 
 	const tokenId = useMemo(() => {
@@ -258,13 +259,13 @@ function StudioInner() {
 			<HorizontalNav />
 			<main style={{ paddingTop: '80px' }}>
 				{/* Hero Section */}
-				<header className="tt-hero gradient-top-right">
+				<header className="tt-hero">
 					<div className="tt-hero-intro z-1">
 						<div className="tt-heading-content center gap-4">
-							<h1 className="heading-xxlarge z-1">Create Your <em className="bold-italic-framed">GitHub</em> Contribution <em className="slim-italic">NFT</em> 🚀</h1>
-							<div className="intro-text">
-								<p>Transform your coding activity into a unique, deterministic NFT that perfectly represents your GitHub journey</p>
-							</div>
+							<h1 className="tt-heading-xxlarge z-1 text-center">Create Your <em className="bold-italic-framed">GitHub</em> Contribution <em className="slim-italic">NFT</em> 🚀</h1>
+							<p className="intro-text text-center max-w-2xl mx-auto">
+								Transform your coding activity into a unique, deterministic NFT that perfectly represents your GitHub journey
+							</p>
 						</div>
 					</div>
 				</header>
@@ -274,73 +275,73 @@ function StudioInner() {
 					{/* Authentication Section */}
 					<section className="card">
 						<div className="card-header">
-							<div>
-								<div className="title">🔐 GitHub Authentication</div>
-								<div className="subtitle">Connect your GitHub account to start creating</div>
+							<div className="flex items-center gap-3">
+								<div className="w-8 h-8 bg-accent-interactive-default rounded-lg flex items-center justify-center text-sm">
+									🔐
+								</div>
+								<div>
+									<div className="title">GitHub Authentication</div>
+									<div className="subtitle">Connect your GitHub account to start creating</div>
+								</div>
 							</div>
 						</div>
 						<div className="card-body">
 							{!profile && !activeUser ? (
-								<div style={{ textAlign: 'center' }}>
+								<div className="text-center space-y-6">
 									{isInMiniApp ? (
-										<div style={{ display: 'flex', flexDirection: 'column', gap: '16px', alignItems: 'center' }}>
-											<div style={{ fontSize: '0.9rem', color: '#9fb3c8' }}>
+										<div className="space-y-4">
+											<p className="text-sm text-text-secondary">
 												Enter GitHub username to preview NFT (Mini App mode)
-											</div>
+											</p>
 											<input
 												type="text"
 												value={usernameInput}
 												onChange={(e) => setUsernameInput(e.target.value)}
 												placeholder="GitHub username"
-												style={{
-													padding: '12px 16px',
-													borderRadius: '8px',
-													border: '1px solid rgba(255,255,255,0.2)',
-													background: 'rgba(255,255,255,0.05)',
-													color: 'white',
-													fontSize: '16px',
-													width: '280px',
-													textAlign: 'center'
-												}}
+												className="input text-center"
 												onKeyPress={(e) => e.key === 'Enter' && fetchByUsername()}
 											/>
-											<button 
+											<button
 												className={`button ${isLoadingUsername ? 'loading' : ''}`}
 												onClick={fetchByUsername}
 												disabled={!usernameInput.trim() || isLoadingUsername}
-												style={{ 
-													padding: '12px 24px',
-													opacity: usernameInput.trim() && !isLoadingUsername ? 1 : 0.5
-												}}
 											>
 												{isLoadingUsername ? 'Loading...' : 'Preview NFT'}
 											</button>
 										</div>
 									) : (
-										<>
+										<div className="space-y-4">
 											<button className="button" onClick={signInWithGitHub}>
 												Sign in with GitHub
 											</button>
-											<div className="muted" style={{ marginTop: '12px' }}>
+											<p className="text-sm text-text-secondary">
 												We&apos;ll use your last 7 weeks of contributions
-											</div>
-										</>
+											</p>
+										</div>
 									)}
 								</div>
 							) : (
-								<div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '16px' }}>
-									<div style={{ display: 'flex', alignItems: 'center', gap: 16, justifyContent: 'center' }}>
-										{profile?.avatarUrl ? (<img src={profile.avatarUrl} alt={profile.login || activeUser || 'User'} width={48} height={48} style={{ borderRadius: '50%' }} />) : null}
-										<div>
-											<div style={{ fontWeight: 600, fontSize: '1.1rem' }}>
+								<div className="text-center space-y-6">
+									<div className="flex items-center justify-center gap-4">
+										{profile?.avatarUrl ? (
+											<img
+												src={profile.avatarUrl}
+												alt={profile.login || activeUser || 'User'}
+												width={48}
+												height={48}
+												className="rounded-full border-2 border-border-default"
+											/>
+										) : null}
+										<div className="text-left">
+											<div className="font-semibold text-text-primary">
 												@{profile?.login || activeUser}
 											</div>
-											<div className="muted">{profile?.name || 'Username input'}</div>
+											<div className="text-sm text-text-secondary">{profile?.name || 'Username input'}</div>
 										</div>
 									</div>
 									{isInMiniApp && !profile && (
-										<button 
-											className="button" 
+										<button
+											className="button"
 											onClick={() => {
 												setActiveUser(null);
 												setGrid(null);
@@ -348,29 +349,31 @@ function StudioInner() {
 												setUsernameInput('');
 												setUsernameSuccess(false);
 											}}
-											style={{ 
-												padding: '8px 16px',
-												fontSize: '0.9rem',
-												background: 'rgba(255,255,255,0.1)',
-												border: '1px solid rgba(255,255,255,0.2)'
-											}}
 										>
 											Try Different Username
 										</button>
 									)}
 								</div>
 							)}
-							{fetchError && <div className="muted" style={{ marginTop: '12px', color: 'crimson' }}>{fetchError}</div>}
+							{fetchError && (
+								<div className="mt-4 p-3 bg-system-error/10 border border-system-error/20 rounded-lg">
+									<p className="text-sm text-system-error">{fetchError}</p>
+								</div>
+							)}
 							{usernameSuccess && isInMiniApp && (
-								<div className="muted" style={{ marginTop: '12px', color: '#00ff88' }}>
-									✅ Successfully loaded contributions for @{activeUser}
+								<div className="mt-4 p-3 bg-system-success/10 border border-system-success/20 rounded-lg">
+									<p className="text-sm text-system-success">
+										✅ Successfully loaded contributions for @{activeUser}
+									</p>
 								</div>
 							)}
-							{derivedParams && (
-								<div className="muted" style={{ marginTop: '12px', fontSize: '0.9rem' }}>
-									🔧 Preview Settings: Shape {derivedParams.shapeIndex}, Palette {derivedParams.presetIndex}, Background {derivedParams.backgroundIndex}
+							{/* {derivedParams && (
+								<div className="mt-4 p-3 bg-background-elevated rounded-lg">
+									<p className="text-xs text-text-secondary font-mono">
+										🔧 Preview Settings: Shape {derivedParams.shapeIndex}, Palette {derivedParams.presetIndex}, Background {derivedParams.backgroundIndex}
+									</p>
 								</div>
-							)}
+							)} */}
 						</div>
 					</section>
 
@@ -378,52 +381,46 @@ function StudioInner() {
 					{grid && grid.length > 0 && (
 						<section className="card">
 							<div className="card-header">
-								<div>
-									<div className="title">📅 Contribution Period</div>
-									<div className="subtitle">Navigate through different 7-week periods</div>
+								<div className="flex items-center gap-3">
+									<div className="w-8 h-8 bg-accent-interactive-default rounded-lg flex items-center justify-center text-sm">
+										📅
+									</div>
+									<div>
+										<div className="title">Contribution Period</div>
+										<div className="subtitle">Navigate through different 7-week periods</div>
+									</div>
 								</div>
 							</div>
 							<div className="card-body">
-								<div style={{ display: 'flex', flexDirection: 'column', gap: '16px', alignItems: 'center' }}>
-									<div style={{ 
-										padding: '16px 24px', 
-										background: 'rgba(255,255,255,0.05)', 
-										borderRadius: '12px',
-										border: '1px solid rgba(255,255,255,0.1)',
-										minWidth: '280px',
-										textAlign: 'center'
-									}}>
-										<div style={{ fontWeight: 600, marginBottom: '8px' }}>Current Period</div>
-										<div style={{ fontSize: '0.9rem', color: '#9fb3c8' }}>
+								<div className="text-center space-y-6">
+									<div className="p-4 bg-background-elevated rounded-xl border border-border-default">
+										<div className="font-semibold text-text-primary mb-2">Current Period</div>
+										<div className="text-sm text-text-secondary">
 											{period ? `${period.start} → ${period.end}` : 'Loading dates...'}
 										</div>
 									</div>
-									
-									<div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
-										<button 
-											className="button" 
+
+									<div className="flex gap-4 justify-center">
+										<button
+											className="button"
 											onClick={() => shiftPeriod(-1)}
 											disabled={!activeUser}
-											style={{ padding: '12px 20px' }}
 										>
 											← Previous Week
 										</button>
-										
-										<button 
-											className="button" 
+
+										<button
+											className="button"
 											onClick={() => shiftPeriod(1)}
 											disabled={!activeUser}
-											style={{ padding: '12px 20px' }}
 										>
 											Next Week →
 										</button>
 									</div>
-								</div>
-								
-								<div style={{ textAlign: 'center', marginTop: '16px' }}>
-									<div className="muted" style={{ fontSize: '0.9rem' }}>
+
+									<p className="text-sm text-text-secondary">
 										Each period shows 7 weeks of contribution data. Use arrows to navigate through time.
-									</div>
+									</p>
 								</div>
 							</div>
 						</section>
@@ -433,20 +430,23 @@ function StudioInner() {
 					{grid && grid.length > 0 && (
 						<section className="card">
 							<div className="card-header">
-								<div>
-									<div className="title">🎨 NFT Preview</div>
-									<div className="subtitle">This is exactly how your NFT will look when minted</div>
+								<div className="flex items-center gap-3">
+									<div className="w-8 h-8 bg-accent-critical-default rounded-lg flex items-center justify-center text-sm">
+										🎨
+									</div>
+									<div>
+										<div className="title">NFT Preview</div>
+										<div className="subtitle">This is exactly how your NFT will look when minted</div>
+									</div>
 								</div>
 							</div>
 							<div className="card-body">
-								<div style={{ textAlign: 'center' }}>
-									<div 
-										dangerouslySetInnerHTML={{ __html: svg }} 
-										style={{ 
-											maxWidth: '400px', 
-											margin: '0 auto',
-											filter: 'drop-shadow(0 8px 32px rgba(0,0,0,0.3))'
-										}}
+								<div className="w-full max-w-4xl mx-auto">
+									<NFTPreview
+										user={activeUser || profile?.login || 'user'}
+										period={period}
+										grid={grid}
+										         className="w-full h-max"
 									/>
 								</div>
 							</div>
@@ -455,81 +455,54 @@ function StudioInner() {
 
 					{/* Central Mint Section */}
 					{grid && grid.length > 0 && (
-						<section className="card" style={{ 
-							background: 'linear-gradient(135deg, rgba(255, 45, 179, 0.1), rgba(138, 43, 226, 0.1))',
-							border: '2px solid rgba(255, 45, 179, 0.3)',
-							textAlign: 'center',
-							padding: '40px'
-						}}>
-							<div style={{ marginBottom: '24px' }}>
-								<h2 style={{ 
-									fontSize: '2rem', 
-									fontWeight: 800, 
-									margin: '0 0 16px 0',
-									background: 'linear-gradient(135deg, #ff2db3, #8a2be2)',
-									WebkitBackgroundClip: 'text',
-									WebkitTextFillColor: 'transparent',
-									backgroundClip: 'text',
-									fontFamily: 'Mozilla Headline, sans-serif'
-								}}>
-									🚀 Ready to Mint?
-								</h2>
-								<p style={{ color: '#9fb3c8', fontSize: '1.1rem', margin: 0 }}>
-									Your NFT is ready! Connect your wallet and mint this unique representation of your GitHub activity.
-								</p>
-							</div>
-							
-							<div style={{ display: 'flex', gap: '16px', justifyContent: 'center', flexWrap: 'wrap' }}>
-								<button 
-									className="button" 
-									onClick={mint}
-									disabled={!isConnected || minting}
-									style={{ 
-										fontSize: '1.1rem', 
-										padding: '16px 32px',
-										background: 'linear-gradient(135deg, rgba(255, 45, 179, 0.3), rgba(138, 43, 226, 0.3))',
-										border: '2px solid rgba(255, 45, 179, 0.5)'
-									}}
-								>
-									{minting ? (
-										<>
-											<span className="spinner"></span>
-											Minting...
-										</>
-									) : (
-										'🎨 Mint NFT'
+						<section className="card relative overflow-hidden">
+							{/* Background gradient overlay */}
+							<div className="absolute inset-0 bg-gradient-to-br from-accent-critical-default/10 to-accent-interactive-default/10"></div>
+
+							<div className="relative z-10 p-8 text-center">
+								<div className="mb-8">
+									<h2 className="text-3xl font-display font-bold text-text-primary mb-4">
+										🚀 Ready to Mint?
+									</h2>
+									<p className="text-lg text-text-secondary">
+										Your NFT is ready! Connect your wallet and mint this unique representation of your GitHub activity.
+									</p>
+								</div>
+
+								<div className="flex gap-4 justify-center flex-wrap mb-6">
+									<button
+										className="button"
+										onClick={mint}
+										disabled={!isConnected || minting}
+									>
+										{minting ? (
+											<>
+												<span className="spinner"></span>
+												Minting...
+											</>
+										) : (
+											'🎨 Mint NFT'
+										)}
+									</button>
+
+									{!isConnected && (
+										<div className="px-6 py-4 text-text-secondary bg-background-elevated rounded-xl border border-border-default">
+											Connect wallet to mint
+										</div>
 									)}
-								</button>
-								
-								{!isConnected && (
-									<div style={{ 
-										padding: '16px 32px', 
-										color: '#9fb3c8',
-										background: 'rgba(255,255,255,0.05)',
-										borderRadius: '12px',
-										border: '1px solid rgba(255,255,255,0.1)'
-									}}>
-										Connect wallet to mint
+								</div>
+
+								{txHash && (
+									<div className="p-4 bg-system-success/10 border border-system-success/20 rounded-xl">
+										<div className="text-system-success font-semibold mb-2">
+											✅ NFT Minted Successfully!
+										</div>
+										<div className="text-sm text-text-secondary font-mono">
+											Transaction: {txHash.slice(0, 10)}...{txHash.slice(-8)}
+										</div>
 									</div>
 								)}
 							</div>
-							
-							{txHash && (
-								<div style={{ 
-									marginTop: '24px', 
-									padding: '16px', 
-									background: 'rgba(0, 229, 255, 0.1)', 
-									borderRadius: '12px',
-									border: '1px solid rgba(0, 229, 255, 0.3)'
-								}}>
-									<div style={{ color: '#00E5FF', fontWeight: 600, marginBottom: '8px' }}>
-										✅ NFT Minted Successfully!
-									</div>
-									<div style={{ fontSize: '0.9rem', color: '#9fb3c8' }}>
-										Transaction: {txHash.slice(0, 10)}...{txHash.slice(-8)}
-									</div>
-								</div>
-							)}
 						</section>
 					)}
 				</div>

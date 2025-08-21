@@ -29,14 +29,7 @@ export function HorizontalNav() {
   return (
     <header className="horizontal-navbar">
       <div className="nav-inner">
-        <Link href="/" className="brand" style={{ 
-          fontSize: '1.5rem', 
-          background: 'linear-gradient(135deg, #ff2db3, #8a2be2)', 
-          WebkitBackgroundClip: 'text', 
-          WebkitTextFillColor: 'transparent',
-          fontWeight: 900,
-          fontFamily: 'Mozilla Headline, sans-serif'
-        }}>
+        <Link href="/" className="brand font-display font-black text-2xl text-text-primary">
           GridGit
         </Link>
         
@@ -46,16 +39,18 @@ export function HorizontalNav() {
             <Link
               key={item.href}
               href={item.href}
-              className={`nav-link ${pathname === item.href ? 'active' : ''}`}
+              className={`nav-link text-sm font-medium transition-all duration-200 ${
+                pathname === item.href ? 'active' : ''
+              }`}
             >
               {item.label}
             </Link>
           ))}
-          <a 
-            href="https://opensea.io/collection/gridgit" 
-            target="_blank" 
-            rel="noreferrer" 
-            className="nav-link"
+          <a
+            href="https://opensea.io/collection/gridgit"
+            target="_blank"
+            rel="noreferrer"
+            className="nav-link text-sm font-medium transition-all duration-200"
           >
             OpenSea
           </a>
@@ -111,10 +106,10 @@ export function HorizontalNav() {
               {item.label}
             </Link>
           ))}
-          <a 
-            href="https://opensea.io/collection/gridgit" 
-            target="_blank" 
-            rel="noreferrer" 
+          <a
+            href="https://opensea.io/collection/gridgit"
+            target="_blank"
+            rel="noreferrer"
             className="mobile-nav-link"
             onClick={closeMobileMenu}
           >
