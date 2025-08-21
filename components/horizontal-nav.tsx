@@ -5,17 +5,19 @@ import { usePathname } from 'next/navigation';
 import { ConnectButton } from '@rainbow-me/rainbowkit';
 import { useState, useEffect } from 'react';
 import { useFarcasterMiniApp } from '@/lib/useFarcasterMiniApp';
+import { useAccount } from 'wagmi';
 
 export function HorizontalNav() {
   const pathname = usePathname();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const { isInMiniApp, user, client } = useFarcasterMiniApp();
+  const { address: account, isConnected } = useAccount();
   
   const navItems = [
     { href: '/' as const, label: 'Home' },
     { href: '/studio' as const, label: 'Studio' },
     { href: '/test_studio' as const, label: 'Test Studio' },
-    { href: '/gallery' as const, label: 'Gallery' },
+    { href: isConnected ? `/gallery/${account}` as const : '/gallery' as const, label: 'Gallery' },
   ];
 
   const toggleMobileMenu = () => {
