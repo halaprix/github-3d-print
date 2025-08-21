@@ -3,7 +3,7 @@ pragma solidity ^0.8.24;
 
 import {Script} from "forge-std/Script.sol";
 import {console2} from "forge-std/console2.sol";
-import {GridGit} from "../src/Github3DPrintNFT.sol";
+import {GridGit} from "../src/GridGit.sol";
 
 contract Deploy is Script {
     function run() public {
