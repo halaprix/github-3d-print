@@ -5,6 +5,8 @@ import {ERC721} from "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {ERC721Burnable} from "@openzeppelin/contracts/token/ERC721/extensions/ERC721Burnable.sol";
 import {EnumerableSet} from "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
+import {ECDSA} from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
+import {MessageHashUtils} from "@openzeppelin/contracts/utils/cryptography/MessageHashUtils.sol";
 
 contract GridGit is ERC721, Ownable, ERC721Burnable {
     using EnumerableSet for EnumerableSet.UintSet;
@@ -14,6 +16,8 @@ contract GridGit is ERC721, Ownable, ERC721Burnable {
     bool public publicMintEnabled;
     EnumerableSet.UintSet private _mintedTokens;
     uint256 public mintPrice;
+    address private _signerAddress;
+    mapping(uint256 => bool) private _usedNonces;
 
     error GridGit__NotOwner();
     error GridGit__NotBurnable();
@@ -21,13 +25,19 @@ contract GridGit is ERC721, Ownable, ERC721Burnable {
     error GridGit__AlreadyMinted();
     error GridGit__InsufficientPayment();
     error GridGit__WithdrawFailed();
+    error GridGit__InvalidSignature();
+    error GridGit__NonceAlreadyUsed();
 
-    constructor(string memory name_, string memory symbol_, string memory baseURI_, address initialOwner)
-        ERC721(name_, symbol_)
-        Ownable(initialOwner)
-    {
+    constructor(
+        string memory name_,
+        string memory symbol_,
+        string memory baseURI_,
+        address initialOwner,
+        address signerAddress
+    ) ERC721(name_, symbol_) Ownable(initialOwner) {
         publicMintEnabled = true;
         _baseTokenURI = baseURI_;
+        _signerAddress = signerAddress;
     }
 
     function mintedTokens() external view returns (uint256[] memory) {
@@ -46,22 +56,37 @@ contract GridGit is ERC721, Ownable, ERC721Burnable {
         return _nextTokenId + 1;
     }
 
+    function signerAddress() external view returns (address) {
+        return _signerAddress;
+    }
+
     function setPublicMintEnabled(bool enabled) external onlyOwner {
         publicMintEnabled = enabled;
     }
 
-    function publicMintDeterministic(uint256 tokenId) external payable returns (uint256) {
+    function publicMintDeterministic(uint256 tokenId, uint256 nonce, bytes memory signature)
+        external
+        payable
+        returns (uint256)
+    {
         if (!publicMintEnabled) revert GridGit__MintDisabled();
         if (_ownerOf(tokenId) != address(0)) revert GridGit__AlreadyMinted();
-        _safeMint(msg.sender, tokenId);
-        _mintedTokens.add(tokenId);
-        return tokenId;
-    }
 
-    function publicMintDeterministicTo(uint256 tokenId, address to) external payable returns (uint256) {
-        if (!publicMintEnabled) revert GridGit__MintDisabled();
-        if (_ownerOf(tokenId) != address(0)) revert GridGit__AlreadyMinted();
-        _safeMint(to, tokenId);
+        // Verify nonce hasn't been used
+        if (_usedNonces[nonce]) revert GridGit__NonceAlreadyUsed();
+        _usedNonces[nonce] = true;
+
+        // Re-create the message hash that was signed
+        bytes32 messageHash = keccak256(abi.encodePacked(msg.sender, nonce));
+        bytes32 ethSignedMessageHash = MessageHashUtils.toEthSignedMessageHash(messageHash);
+
+        // Recover signer address from signature
+        address recoveredSigner = ECDSA.recover(ethSignedMessageHash, signature);
+
+        // Verify signature was created by our trusted signer
+        if (recoveredSigner != _signerAddress) revert GridGit__InvalidSignature();
+
+        _safeMint(msg.sender, tokenId);
         _mintedTokens.add(tokenId);
         return tokenId;
     }
