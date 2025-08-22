@@ -30,9 +30,7 @@ export async function POST(req: NextRequest) {
                 { status: 401 }
             );
         }
-        console.log('walletAddress', walletAddress);
-        console.log('githubUser', githubUser);
-        console.log('username', username);
+
         if (githubUser.login !== username) {
             return NextResponse.json(
                 { error: 'Invalid GitHub username' },
