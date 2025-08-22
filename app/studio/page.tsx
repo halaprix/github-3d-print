@@ -103,52 +103,30 @@ function StudioInner() {
 		return deriveParams(activeUser, period);
 	}, [grid, activeUser, period]);
 
-	const svg = useMemo(() => {
-		if (!derivedParams) return '';
-		const palette = LIB_PRESETS[derivedParams.presetIndex]?.colors ?? LIB_PRESETS[0].colors;
-		const nibbles = quantizeToNibbles(grid!);
-		return buildGridSvg(nibbles, palette, derivedParams.shapeIndex, derivedParams.backgroundIndex, BigInt(derivedParams.contextHash));
-	}, [derivedParams, grid]);
 
-	const tokenId = useMemo(() => {
-		if (!derivedParams || !grid) return null as null | bigint;
-		const nibbles = quantizeToNibbles(grid);
-		return encodeTokenIdFromComponents(nibbles, derivedParams.shapeIndex, derivedParams.presetIndex, derivedParams.backgroundIndex, derivedParams.contextHash);
-	}, [derivedParams, grid]);
-
-	function downloadSvg() {
-		if (!svg) return;
-		const blob = new Blob([svg], { type: 'image/svg+xml' });
-		const url = URL.createObjectURL(blob);
-		const a = document.createElement('a');
-		a.href = url;
-		a.download = `gridgit-${profile?.login || 'user'}.svg`;
-		a.click();
-		URL.revokeObjectURL(url);
-	}
 
 	async function mint() {
 		try {
 			if (!activeUser || !grid || !derivedParams) return alert('No preview ready');
-			
+
 			let client: any;
 			let accountAddress: string;
 			let chain: any;
-			
+
 			if (isInMiniApp) {
 				// Use Farcaster wallet in Mini App
 				const farcasterProvider = getEthereumProvider();
 				if (!farcasterProvider) return alert('Farcaster wallet not available');
-				
+
 				try {
 					// getEthereumProvider returns a Promise, so we need to await it
 					const provider = await farcasterProvider;
 					if (!provider) return alert('Farcaster wallet provider not available');
-					
+
 					// Get accounts from Farcaster wallet
 					const accounts = await provider.request({ method: 'eth_accounts' });
 					if (!accounts || accounts.length === 0) return alert('No Farcaster wallet connected');
-					
+
 					accountAddress = accounts[0];
 					client = provider;
 					chain = { id: 8453 }; // Base chain
@@ -159,41 +137,61 @@ function StudioInner() {
 				// Use Rainbow Kit wallet for regular web
 				if (!walletClient || !publicClient) return alert('Please connect your wallet');
 				if (!account) return alert('No account connected');
-				
+
 				client = walletClient;
 				accountAddress = account;
 				chain = walletClient.chain;
 			}
-			
+
 			// Early return if walletClient is undefined for contract creation
 			if (!walletClient) return alert('Wallet client not available');
-			
+
 			const nibbles = quantizeToNibbles(grid);
-			const id = encodeTokenIdFromComponents(nibbles, derivedParams.shapeIndex, derivedParams.presetIndex, derivedParams.backgroundIndex, derivedParams.contextHash);
-			
+			const tokenId = encodeTokenIdFromComponents(nibbles, derivedParams.shapeIndex, derivedParams.presetIndex, derivedParams.backgroundIndex, derivedParams.contextHash);
+
 			setMinting(true);
 			setTxHash(null);
-			
+
+			// Request signature from backend
+			const signatureResponse = await fetch('/api/generate-signature', {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json',
+				},
+				body: JSON.stringify({
+					walletAddress: accountAddress,
+					username: activeUser
+				})
+			});
+
+			if (!signatureResponse.ok) {
+				const errorData = await signatureResponse.json();
+				return alert(`Signature verification failed: ${errorData.error || 'Unknown error'}`);
+			}
+
+			const signatureData = await signatureResponse.json();
+			const { signature, nonce } = signatureData;
+
 			const abi = parseAbi([
-				'function publicMintDeterministic(uint256 tokenId) public payable returns (uint256)',
+				'function publicMintDeterministic(uint256 tokenId, uint256 nonce, bytes signature) public payable returns (uint256)',
 				'function mintPrice() public view returns (uint256)'
 			]);
-			
+
 			// Read mint price from contract first
 			const mintPrice = await publicClient!.readContract({
 				address: nftConfig.contractAddress as `0x${string}`,
 				abi,
 				functionName: 'mintPrice'
 			});
-			
+
 			if (isInMiniApp) {
-				// Mint using Farcaster wallet
+				// Mint using Farcaster wallet with signature
 				const data = encodeFunctionData({
 					abi,
 					functionName: 'publicMintDeterministic',
-					args: [id]
+					args: [tokenId, nonce, signature]
 				});
-				
+
 				const hash = await client.request({
 					method: 'eth_sendTransaction',
 					params: [{
@@ -204,22 +202,22 @@ function StudioInner() {
 						from: accountAddress
 					}]
 				});
-				
+
 				setTxHash(hash);
 			} else {
-				// Mint using Rainbow Kit wallet
-				const contract = getContract({ 
-					address: nftConfig.contractAddress as `0x${string}`, 
-					abi, 
-					client: walletClient 
+				// Mint using Rainbow Kit wallet with signature
+				const contract = getContract({
+					address: nftConfig.contractAddress as `0x${string}`,
+					abi,
+					client: walletClient
 				});
-				
-				const hash = await contract.write.publicMintDeterministic([id], { 
-					account: accountAddress as `0x${string}`, 
+
+				const hash = await contract.write.publicMintDeterministic([tokenId, nonce, signature], {
+					account: accountAddress as `0x${string}`,
 					chain: walletClient.chain,
 					value: mintPrice // Use dynamic mint price
 				} as any);
-				
+
 				setTxHash(hash);
 			}
 		} catch (e: any) {
