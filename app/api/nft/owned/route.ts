@@ -8,7 +8,7 @@ const CONFIG = (() => {
 	const chainName = process.env.CHAIN_NAME || process.env.NEXT_PUBLIC_CHAIN_NAME || 'mainnet';
 	const rpcUrl = process.env.CHAIN_RPC_URL || process.env.NEXT_PUBLIC_CHAIN_RPC || 'https://rpc.ankr.com/eth';
 	const address = (process.env.NFT_CONTRACT_ADDRESS || process.env.NEXT_PUBLIC_NFT_CONTRACT || '').toLowerCase();
-	const deployBlock = Number(process.env.DEPLOY_BLOCK || process.env.NEXT_PUBLIC_DEPLOY_BLOCK || '0');
+	const deployBlock = Number(process.env.DEPLOY_BLOCK || process.env.NEXT_PUBLIC_DEPLOY_BLOCK || '34529601');
 	return { chainId, chainName, rpcUrl, address, deployBlock } as const;
 })();
 
@@ -21,6 +21,7 @@ export async function GET(req: NextRequest) {
 	if (!/^0x[0-9a-f]{40}$/.test(CONFIG.address)) {
 		return NextResponse.json({ tokens: [] }, { status: 200 });
 	}
+	console.log(CONFIG);
 	const client = createPublicClient({
 		chain: { id: CONFIG.chainId, name: CONFIG.chainName, nativeCurrency: { name: 'ETH', symbol: 'ETH', decimals: 18 }, rpcUrls: { default: { http: [CONFIG.rpcUrl] } } } as any,
 		transport: http(CONFIG.rpcUrl),
@@ -30,7 +31,9 @@ export async function GET(req: NextRequest) {
 	const toBlock = await client.getBlockNumber();
 	const logs = await client.getLogs({ address: CONFIG.address as Address, event, fromBlock, toBlock });
 	const owned = new Set<string>();
+	console.log(logs);
 	for (const log of logs) {
+		console.log(log);
 		const { from, to, tokenId } = (log as any).args as { from: Address; to: Address; tokenId: bigint };
 		if (to.toLowerCase() === owner) owned.add(tokenId.toString());
 		if (from.toLowerCase() === owner) owned.delete(tokenId.toString());
