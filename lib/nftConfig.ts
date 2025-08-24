@@ -6,7 +6,7 @@ export const nftConfig = {
     explorer: process.env.NEXT_PUBLIC_CHAIN_EXPLORER || 'https://sepolia.etherscan.io',
   },
   contractAddress: process.env.NEXT_PUBLIC_NFT_CONTRACT || '0x0000000000000000000000000000000000000000',
-  deployBlock: Number(process.env.NEXT_PUBLIC_DEPLOY_BLOCK || '34141503')
+  deployBlock: Number(process.env.NEXT_PUBLIC_DEPLOY_BLOCK || '34529601')
 } as const;
 
 

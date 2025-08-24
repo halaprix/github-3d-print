@@ -38,10 +38,10 @@ export function deriveParams(user: string, period: Period): { shapeIndex: number
 	const shapeIndex = hash & 0xf; // 0..15 (4 bits)
 	const presetIndex = (hash >>> 4) % Math.max(1, PRESET_PALETTES.length);
 	const backgroundIndex = (hash >>> 8) % Math.max(1, BACKGROUND_THEMES.length);
-	
+
 	// Debug: sprawdź wygenerowane wartości (uncomment for debugging)
 	// console.log('🔧 deriveParams debug:', { user, period, key, hash: hash.toString(16), shapeIndex, presetIndex, backgroundIndex });
-	
+
 	return { shapeIndex, presetIndex, backgroundIndex, contextHash: hash };
 }
 
@@ -158,7 +158,7 @@ function convertBackgroundToSvg(background: BackgroundTheme, width: number, heig
 	};
 }
 
-export function buildGridSvg(nibbleGrid: number[][], palette: string[], shapeIndex: number, backgroundIndex: number = 0, contextHash: bigint = 0n): string {
+export function buildGridSvg(nibbleGrid: number[][], palette: string[], shapeIndex: number, backgroundIndex: number = 0, contextHash: bigint = 0n, talentScore?: number): string {
 	const rows = 7, cols = 7;
 	const SVG_SIZE = 800; // Base size for calculations (will scale down to 80%)
 	const padding = SVG_SIZE * 0.1; // 10% padding like in the demo
@@ -249,7 +249,33 @@ export function buildGridSvg(nibbleGrid: number[][], palette: string[], shapeInd
 			shapes.push(draw(vx, vy, fill, opacity, cellContextHash));
 		}
 	}
-	return `<?xml version="1.0" encoding="UTF-8"?>\n<svg xmlns="http://www.w3.org/2000/svg" width="80%" height="auto" viewBox="0 0 ${width} ${height}" shape-rendering="geometricPrecision" preserveAspectRatio="xMidYMid meet">\n<defs>\n${bgDefs}\n</defs>\n${bgOverlay}\n<rect x="0" y="0" width="${width}" height="${height}" fill="${bgFill}"/>\n${bgFilter}\n<g>\n${shapes.join('\n')}\n</g>\n</svg>`;
+
+	// Add talent score display if available
+	let talentScoreElements = '';
+	if (talentScore !== undefined && talentScore > 0) {
+		// Position the talent score in the most bottom-right corner
+		const scoreX = width - padding - 5;
+		const scoreY = height - padding ;
+
+		// Create background circles with 80% opacity
+		talentScoreElements = `
+<g>
+	<!-- Background circles for the score -->
+	<circle cx="${scoreX + 35}" cy="${scoreY + 15}" r="45" fill="${palette[1] || '#1f6feb'}" fill-opacity="0.8"/>
+	<circle cx="${scoreX + 35}" cy="${scoreY + 15}" r="40" fill="${palette[1] || '#1f6feb'}" fill-opacity="0.7"/>
+
+	<!-- Talent Protocol logo/icon -->
+	<text x="${scoreX + 15}" y="${scoreY + 2}" font-family="Arial, sans-serif" font-size="16" font-weight="bold" fill="${palette[0] || '#0a0f1a'}">★</text>
+
+	<!-- Score value -->
+	<text x="${scoreX + 35}" y="${scoreY + 22}" font-family="Arial, sans-serif" font-size="24" font-weight="bold" text-anchor="middle" fill="${palette[0] || '#0a0f1a'}">${talentScore}</text>
+
+	<!-- "TALENT" label -->
+	<text x="${scoreX + 35}" y="${scoreY + 35}" font-family="Arial, sans-serif" font-size="12" text-anchor="middle" fill="${palette[0] || '#0a0f1a'}" opacity="0.8">TALENT</text>
+</g>`;
+	}
+
+	return `<?xml version="1.0" encoding="UTF-8"?>\n<svg xmlns="http://www.w3.org/2000/svg" width="80%" height="auto" viewBox="0 0 ${width} ${height}" shape-rendering="geometricPrecision" preserveAspectRatio="xMidYMid meet">\n<defs>\n${bgDefs}\n</defs>\n${bgOverlay}\n<rect x="0" y="0" width="${width}" height="${height}" fill="${bgFill}"/>\n${bgFilter}\n<g>\n${shapes.join('\n')}\n</g>\n${talentScoreElements}\n</svg>`;
 }
 
 /**

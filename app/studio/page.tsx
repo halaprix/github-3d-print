@@ -444,7 +444,8 @@ function StudioInner() {
 										user={activeUser || profile?.login || 'user'}
 										period={period}
 										grid={grid}
-										         className="w-full h-max"
+										walletAddress={account}
+										className="w-full h-max"
 									/>
 								</div>
 							</div>
