@@ -34,7 +34,9 @@ function StudioInner() {
 	const [isLoadingUsername, setIsLoadingUsername] = useState(false);
 	const [usernameSuccess, setUsernameSuccess] = useState(false);
 	const { isInMiniApp, getEthereumProvider } = useFarcasterMiniApp();
-
+// Both mini-app and regular web use the same GitHub login flow
+// The difference is only in storage mechanism (localStorage vs cookies)
+const useUsernameInput = false;
 	// Rainbow Kit hooks
 	const { address: account, isConnected } = useAccount();
 	const { data: walletClient } = useWalletClient();
@@ -42,24 +44,85 @@ function StudioInner() {
 
 	useEffect(() => {
 		(async () => {
-			const r = await fetch('/api/auth/me', { cache: 'no-store' });
-			if (!r.ok) return;
-			const m = await r.json();
-			if (m?.login) {
-				setProfile({ login: m.login, name: m.name || m.login, avatarUrl: m.avatarUrl || '' });
-				setActiveUser(m.login);
-				await fetchUserData(m.login);
+			if (isInMiniApp) {
+				// In mini-app mode, check localStorage first
+				const storedProfile = localStorage.getItem('gh_miniapp_profile');
+				console.log('Checking mini-app localStorage for profile:', storedProfile);
+				if (storedProfile) {
+					try {
+						const profile = JSON.parse(storedProfile);
+						console.log('Loaded profile from localStorage:', profile);
+						setProfile(profile);
+						setActiveUser(profile.login);
+						await fetchUserData(profile.login);
+					} catch (e) {
+						console.error('Error parsing stored profile:', e);
+						localStorage.removeItem('gh_miniapp_profile');
+					}
+				} else {
+					console.log('No profile found in localStorage');
+				}
+			} else {
+				// Regular web mode - use cookies for auth
+				const r = await fetch('/api/auth/me', { cache: 'no-store' });
+				if (!r.ok) return;
+				const m = await r.json();
+				if (m?.login) {
+					setProfile({ login: m.login, name: m.name || m.login, avatarUrl: m.avatarUrl || '' });
+					setActiveUser(m.login);
+					await fetchUserData(m.login);
+				}
 			}
 		})();
-	}, []);
+	}, [isInMiniApp]);
 
 	async function signInWithGitHub() {
 		if (isInMiniApp) {
-			window.open('/api/auth/github/login', '_blank');
+		  // Mini-app mode: store auth data in localStorage
+		  const popup = window.open('/api/auth/github/login', '_blank');
+
+		  // Listen for messages from the popup with profile data
+		  const messageHandler = (event: MessageEvent) => {
+			console.log('Received message in mini-app:', event.data, 'from origin:', event.origin);
+			if (event.origin !== window.location.origin) return; // Security check
+			if (event.data?.success && event.data?.profile && event.data?.accessToken && event.data?.type === 'github-auth') {
+			  console.log('GitHub OAuth successful for mini-app! Storing profile and token:', {
+			    profile: event.data.profile,
+			    hasToken: !!event.data.accessToken
+			  });
+
+			  // Store the profile data and token in localStorage for mini-app
+			  localStorage.setItem('gh_miniapp_profile', JSON.stringify(event.data.profile));
+			  localStorage.setItem('gh_miniapp_token', event.data.accessToken);
+
+			  // Update state with the profile
+			  setProfile(event.data.profile);
+			  setActiveUser(event.data.profile.login);
+			  fetchUserData(event.data.profile.login);
+
+			  // Clean up listener
+			  window.removeEventListener('message', messageHandler);
+			} else {
+			  console.log('Message did not match expected format:', event.data);
+			}
+		  };
+		  window.addEventListener('message', messageHandler);
 		} else {
-			window.location.href = '/api/auth/github/login';
+		  // Regular web mode: use cookies
+		  const popup = window.open('/api/auth/github/login', '_blank');
+
+		  // Listen for messages from the popup
+		  const messageHandler = (event: MessageEvent) => {
+			if (event.origin !== window.location.origin) return; // Security check
+			if (event.data?.success) {
+			  // Handle post-auth logic (e.g., reload user state)
+			  console.log('GitHub OAuth successful!');
+			  window.location.reload();
+			}
+		  };
+		  window.addEventListener('message', messageHandler);
 		}
-	}
+	  }
 
 	async function fetchUserData(login: string) {
 		setFetchError(null);
@@ -152,16 +215,30 @@ function StudioInner() {
 			setMinting(true);
 			setTxHash(null);
 
+			// Prepare signature request payload
+			const signaturePayload: any = {
+				walletAddress: accountAddress,
+				username: activeUser
+			};
+
+			// For mini-apps, include GitHub token from localStorage
+			if (isInMiniApp) {
+				const storedToken = localStorage.getItem('gh_miniapp_token');
+				if (storedToken) {
+					signaturePayload.githubToken = storedToken;
+					console.log('Including GitHub token in signature request for mini-app');
+				} else {
+					console.error('No GitHub token found in localStorage for mini-app');
+				}
+			}
+
 			// Request signature from backend
 			const signatureResponse = await fetch('/api/generate-signature', {
 				method: 'POST',
 				headers: {
 					'Content-Type': 'application/json',
 				},
-				body: JSON.stringify({
-					walletAddress: accountAddress,
-					username: activeUser
-				})
+				body: JSON.stringify(signaturePayload)
 			});
 
 			if (!signatureResponse.ok) {
@@ -286,7 +363,7 @@ function StudioInner() {
 						<div className="card-body">
 							{!profile && !activeUser ? (
 								<div className="text-center space-y-6">
-									{isInMiniApp ? (
+									{useUsernameInput ? (
 										<div className="space-y-4">
 											<p className="text-sm text-text-secondary">
 												Enter GitHub username to preview NFT (Mini App mode)
@@ -337,7 +414,7 @@ function StudioInner() {
 											<div className="text-sm text-text-secondary">{profile?.name || 'Username input'}</div>
 										</div>
 									</div>
-									{isInMiniApp && !profile && (
+									{useUsernameInput && !profile && (
 										<button
 											className="button"
 											onClick={() => {
@@ -358,7 +435,7 @@ function StudioInner() {
 									<p className="text-sm text-system-error">{fetchError}</p>
 								</div>
 							)}
-							{usernameSuccess && isInMiniApp && (
+							{usernameSuccess && useUsernameInput && (
 								<div className="mt-4 p-3 bg-system-success/10 border border-system-success/20 rounded-lg">
 									<p className="text-sm text-system-success">
 										✅ Successfully loaded contributions for @{activeUser}

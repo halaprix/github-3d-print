@@ -7,17 +7,28 @@ export const runtime = 'nodejs';
 interface GenerateSignatureRequest {
     walletAddress: string;
     username: string;
+    githubToken?: string; // Optional for mini-app support
 }
 
 export async function POST(req: NextRequest) {
     try {
-        const { walletAddress, username  }: GenerateSignatureRequest = await req.json();
+        const { walletAddress, username, githubToken: requestToken }: GenerateSignatureRequest = await req.json();
         const cookieStore = cookies();
-        const githubToken = cookieStore.get('gh_token')?.value;
+        const cookieToken = cookieStore.get('gh_token')?.value;
 
-        if (!walletAddress || !githubToken) {
+        // Use token from request body (mini-app) or cookies (regular web)
+        const githubToken = requestToken || cookieToken;
+
+        if (!walletAddress) {
             return NextResponse.json(
-                { error: 'Missing walletAddress or githubToken' },
+                { error: 'Missing walletAddress' },
+                { status: 400 }
+            );
+        }
+
+        if (!githubToken) {
+            return NextResponse.json(
+                { error: 'Missing githubToken - please authenticate with GitHub first' },
                 { status: 400 }
             );
         }

@@ -48,10 +48,49 @@ export async function GET(req: NextRequest) {
         return res;
     }
 	const profile = { login: userJson.login, name: userJson.name, avatarUrl: userJson.avatar_url };
-    const res = redirect('/studio');
-	res.cookies.set('gh_profile', Buffer.from(JSON.stringify(profile)).toString('base64'), { httpOnly: true, path: '/', maxAge: 60 * 60 * 24 * 30 });
-	res.cookies.set('gh_token', accessToken, { httpOnly: true, path: '/', maxAge: 60 * 60 * 24 });
-	return res;
+    const html = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <title>GitHub Auth</title>
+    </head>
+    <body>
+        <script>
+            const profile = ${JSON.stringify(profile)};
+            const accessToken = '${accessToken}';
+
+            // Let the opener know login finished with full profile data and token
+            if (window.opener) {
+                console.log('Sending GitHub auth message to opener:', { profile, hasToken: !!accessToken });
+                window.opener.postMessage({
+                    success: true,
+                    profile: profile,
+                    accessToken: accessToken,
+                    type: 'github-auth'
+                }, "*");
+
+                // Small delay to ensure message is sent before closing
+                setTimeout(() => {
+                    window.close();
+                }, 100);
+            } else {
+                // fallback if opened in full tab
+                window.location.href = "/studio";
+            }
+        </script>
+    </body>
+    </html>
+  `;
+  
+  const res = new NextResponse(html, {
+    headers: { "Content-Type": "text/html" },
+  });
+  console.log('res', res);
+  // set your cookies as before
+  res.cookies.set('gh_profile', Buffer.from(JSON.stringify(profile)).toString('base64'), { httpOnly: true, path: '/', maxAge: 60 * 60 * 24 * 30 });
+  res.cookies.set('gh_token', accessToken, { httpOnly: true, path: '/', maxAge: 60 * 60 * 24 });
+  
+  return res;
 }
 
 
