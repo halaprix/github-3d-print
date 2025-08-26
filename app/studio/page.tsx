@@ -7,8 +7,9 @@ import { PRESET_PALETTES as LIB_PRESETS } from '@/lib/palettes';
 import { deriveParams, quantizeToNibbles, encodeTokenIdFromComponents, buildGridSvg } from '@/lib/nftRender';
 import { NFTPreview } from '@/components/nft-preview';
 import { HorizontalNav } from '@/components/horizontal-nav';
-import { useAccount, useWalletClient, usePublicClient } from 'wagmi';
+import { useAccount, useWalletClient, usePublicClient, useWaitForTransactionReceipt } from 'wagmi';
 import { useFarcasterMiniApp } from '@/lib/useFarcasterMiniApp';
+import { useTransactionToast } from '@/components/Toast';
 
 type Profile = { login: string; name: string; avatarUrl: string };
 
@@ -41,6 +42,16 @@ const useUsernameInput = false;
 	const { address: account, isConnected } = useAccount();
 	const { data: walletClient } = useWalletClient();
 	const publicClient = usePublicClient();
+
+	// Toast hooks
+	const {
+		showPendingToast,
+		showSuccessToast,
+		showErrorToast,
+		updateToSuccess,
+		updateToError,
+		removeToast,
+	} = useTransactionToast();
 
 	useEffect(() => {
 		(async () => {
@@ -170,7 +181,10 @@ const useUsernameInput = false;
 
 	async function mint() {
 		try {
-			if (!activeUser || !grid || !derivedParams) return alert('No preview ready');
+			if (!activeUser || !grid || !derivedParams) {
+				showErrorToast('Mint Failed', 'No preview ready. Please load your GitHub data first.');
+				return;
+			}
 
 			let client: any;
 			let accountAddress: string;
@@ -179,27 +193,43 @@ const useUsernameInput = false;
 			if (isInMiniApp) {
 				// Use Farcaster wallet in Mini App
 				const farcasterProvider = getEthereumProvider();
-				if (!farcasterProvider) return alert('Farcaster wallet not available');
+				if (!farcasterProvider) {
+					showErrorToast('Mint Failed', 'Farcaster wallet not available');
+					return;
+				}
 
 				try {
 					// getEthereumProvider returns a Promise, so we need to await it
 					const provider = await farcasterProvider;
-					if (!provider) return alert('Farcaster wallet provider not available');
+					if (!provider) {
+						showErrorToast('Mint Failed', 'Farcaster wallet provider not available');
+						return;
+					}
 
 					// Get accounts from Farcaster wallet
 					const accounts = await provider.request({ method: 'eth_accounts' });
-					if (!accounts || accounts.length === 0) return alert('No Farcaster wallet connected');
+					if (!accounts || accounts.length === 0) {
+						showErrorToast('Mint Failed', 'No Farcaster wallet connected');
+						return;
+					}
 
 					accountAddress = accounts[0];
 					client = provider;
 					chain = { id: 8453 }; // Base chain
 				} catch (error) {
-					return alert('Failed to connect to Farcaster wallet: ' + (error as Error).message);
+					showErrorToast('Mint Failed', `Failed to connect to Farcaster wallet: ${(error as Error).message}`);
+					return;
 				}
 			} else {
 				// Use Rainbow Kit wallet for regular web
-				if (!walletClient || !publicClient) return alert('Please connect your wallet');
-				if (!account) return alert('No account connected');
+				if (!walletClient || !publicClient) {
+					showErrorToast('Mint Failed', 'Please connect your wallet');
+					return;
+				}
+				if (!account) {
+					showErrorToast('Mint Failed', 'No account connected');
+					return;
+				}
 
 				client = walletClient;
 				accountAddress = account;
@@ -207,13 +237,21 @@ const useUsernameInput = false;
 			}
 
 			// Early return if walletClient is undefined for contract creation
-			if (!walletClient) return alert('Wallet client not available');
+			if (!walletClient && !isInMiniApp) {
+				showErrorToast('Mint Failed', 'Wallet client not available');
+				return;
+			}
 
 			const nibbles = quantizeToNibbles(grid);
 			const tokenId = encodeTokenIdFromComponents(nibbles, derivedParams.shapeIndex, derivedParams.presetIndex, derivedParams.backgroundIndex, derivedParams.contextHash);
 
 			setMinting(true);
 			setTxHash(null);
+
+			// Show pending toast
+			let pendingToastId: string | undefined;
+			try {
+				pendingToastId = showPendingToast('Transaction Pending', 'Preparing your NFT mint transaction...');
 
 			// Prepare signature request payload
 			const signaturePayload: any = {
@@ -243,7 +281,8 @@ const useUsernameInput = false;
 
 			if (!signatureResponse.ok) {
 				const errorData = await signatureResponse.json();
-				return alert(`Signature verification failed: ${errorData.error || 'Unknown error'}`);
+				updateToError(pendingToastId, 'Mint Failed', `Signature verification failed: ${errorData.error || 'Unknown error'}`);
+				return;
 			}
 
 			const signatureData = await signatureResponse.json();
@@ -261,6 +300,8 @@ const useUsernameInput = false;
 				functionName: 'mintPrice'
 			});
 
+			let hash: string;
+
 			if (isInMiniApp) {
 				// Mint using Farcaster wallet with signature
 				const data = encodeFunctionData({
@@ -269,7 +310,7 @@ const useUsernameInput = false;
 					args: [tokenId, nonce, signature]
 				});
 
-				const hash = await client.request({
+				hash = await client.request({
 					method: 'eth_sendTransaction',
 					params: [{
 						to: nftConfig.contractAddress,
@@ -279,30 +320,64 @@ const useUsernameInput = false;
 						from: accountAddress
 					}]
 				});
-
-				setTxHash(hash);
 			} else {
 				// Mint using Rainbow Kit wallet with signature
+				if (!walletClient) {
+					throw new Error('Wallet client not available');
+				}
+
 				const contract = getContract({
 					address: nftConfig.contractAddress as `0x${string}`,
 					abi,
 					client: walletClient
 				});
 
-				const hash = await contract.write.publicMintDeterministic([tokenId, nonce, signature], {
+				hash = await contract.write.publicMintDeterministic([tokenId, nonce, signature], {
 					account: accountAddress as `0x${string}`,
 					chain: walletClient.chain,
 					value: mintPrice // Use dynamic mint price
 				} as any);
+			}
 
-				setTxHash(hash);
+			setTxHash(hash);
+
+			// Update toast to show transaction submitted
+			updateToSuccess(pendingToastId, 'Transaction Submitted', `Transaction ${hash.slice(0, 10)}...${hash.slice(-8)} submitted to network`, {
+				label: 'View on Explorer',
+				onClick: () => window.open(`${nftConfig.chain.explorer}/tx/${hash}`, '_blank')
+			});
+
+			// Wait for transaction confirmation
+			const receipt = await publicClient!.waitForTransactionReceipt({ hash: hash as `0x${string}` });
+
+			if (receipt.status === 'success') {
+				// Show success toast
+				showSuccessToast('NFT Minted Successfully!', `Your GitHub contribution NFT has been minted.`, {
+					label: 'View NFT',
+					onClick: () => window.open(`${nftConfig.chain.explorer}/tx/${hash}`, '_blank')
+				});
+			} else {
+				// Show failure toast
+				showErrorToast('Transaction Failed', 'The transaction failed on the blockchain.', {
+					label: 'View Details',
+					onClick: () => window.open(`${nftConfig.chain.explorer}/tx/${hash}`, '_blank')
+				});
 			}
 		} catch (e: any) {
-			alert(e?.message || String(e));
-		} finally {
+				if (pendingToastId) {
+					updateToError(pendingToastId, 'Mint Failed', e?.message || String(e));
+				} else {
+					showErrorToast('Mint Failed', e?.message || String(e));
+				}
+					} finally {
 			setMinting(false);
 		}
+	} catch (e: any) {
+		showErrorToast('Mint Failed', e?.message || String(e));
+	} finally {
+		setMinting(false);
 	}
+}
 
 	function shiftPeriod(direction: number) {
 		(async () => {
@@ -568,16 +643,7 @@ const useUsernameInput = false;
 									)}
 								</div>
 
-								{txHash && (
-									<div className="p-4 bg-system-success/10 border border-system-success/20 rounded-xl">
-										<div className="text-system-success font-semibold mb-2">
-											✅ NFT Minted Successfully!
-										</div>
-										<div className="text-sm text-text-secondary font-mono">
-											Transaction: {txHash.slice(0, 10)}...{txHash.slice(-8)}
-										</div>
-									</div>
-								)}
+
 							</div>
 						</section>
 					)}
