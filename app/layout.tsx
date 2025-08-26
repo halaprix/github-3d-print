@@ -5,6 +5,7 @@ import { Analytics } from "@vercel/analytics/next"
 import { getOpenSeaCollectionUrl } from '@/lib/opensea';
 import dynamic from 'next/dynamic';
 import { RainbowProvider } from '@/components/rainbow-provider'
+import { ToastProvider } from '@/components/Toast'
 
 const inter = Inter({
   subsets: ['latin'],
@@ -67,7 +68,9 @@ export default function RootLayout({
       </head>
       <body className="bg-background-primary text-text-primary font-sans antialiased">
         <RainbowProvider>
-          {children}
+          <ToastProvider>
+            {children}
+          </ToastProvider>
         </RainbowProvider>
         <Analytics />
       </body>
