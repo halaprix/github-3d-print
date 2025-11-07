@@ -10,8 +10,8 @@
   },
   "dependencies": {
     "@farcaster/miniapp-sdk": "^0.1.9",
-    "@reown/appkit": "^1.0.0",
-    "@reown/appkit-adapter-wagmi": "^1.0.0",
+    "@reown/appkit": "1.8.13",
+    "@reown/appkit-adapter-wagmi": "1.8.13",
     "@tanstack/react-query": "^5.85.3",
     "@vercel/analytics": "^1.5.0",
     "ethers": "^6.15.0",
@@ -21,7 +21,9 @@
     "react-dom": "18.3.1",
     "three": "0.160.0",
     "viem": "^2.38.6",
-    "wagmi": "^2.19.2"
+    "wagmi": "^2.19.2",
+    "@wagmi/core": "^2.22.1",
+    "zod": "^3.22.0"
   },
   "devDependencies": {
     "@types/node": "20.14.9",
