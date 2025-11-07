@@ -4,6 +4,7 @@ import { Inter, Outfit } from 'next/font/google';
 import { Analytics } from "@vercel/analytics/next"
 import { getOpenSeaCollectionUrl } from '@/lib/opensea';
 import dynamic from 'next/dynamic';
+import { headers } from 'next/headers';
 import { AppKitProvider } from '@/components/appkit-provider'
 import { ToastProvider } from '@/components/Toast'
 
@@ -54,11 +55,14 @@ export const metadata: Metadata = {
   }
 }
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: {
   children: React.ReactNode
 }) {
+  const headersObj = await headers();
+  const cookies = headersObj.get('cookie');
+
   return (
     <html lang="en" className={`${inter.variable} ${outfit.variable}`}>
       <head>
@@ -67,7 +71,7 @@ export default function RootLayout({
         <link href="https://fonts.googleapis.com/css2?family=Mozilla+Headline:wght@200..700&display=swap" rel="stylesheet" />
       </head>
       <body className="bg-background-primary text-text-primary font-sans antialiased">
-        <AppKitProvider>
+        <AppKitProvider cookies={cookies}>
           <ToastProvider>
             {children}
           </ToastProvider>

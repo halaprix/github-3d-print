@@ -5,8 +5,7 @@ import { WagmiProvider, cookieToInitialState } from 'wagmi';
 import { createAppKit } from '@reown/appkit/react';
 import { WagmiAdapter } from '@reown/appkit-adapter-wagmi';
 import { base } from '@reown/appkit/networks';
-import { createStorage } from 'wagmi';
-import { cookieStorage } from '@reown/appkit/react';
+import { cookieStorage, createStorage } from '@wagmi/core';
 import type { Config } from 'wagmi';
 
 const projectId = 'YOUR_PROJECT_ID'; // Get this from https://dashboard.reown.com - create a new project and copy the Project ID
