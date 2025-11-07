@@ -555,23 +555,6 @@ input,button{ font: inherit; }
   }
 }
 
-/* Rainbow Kit custom styling */
-.horizontal-navbar [data-testid="connect-button"] {
-  background: linear-gradient(135deg, rgba(255, 45, 179, 0.2), rgba(138, 43, 226, 0.2)) !important;
-  border: 1px solid rgba(255, 45, 179, 0.3) !important;
-  border-radius: 12px !important;
-  color: white !important;
-  font-weight: 600 !important;
-  padding: 10px 16px !important;
-  backdrop-filter: blur(10px) !important;
-  transition: all 0.3s ease !important;
-}
-.horizontal-navbar [data-testid="connect-button"]:hover {
-  background: linear-gradient(135deg, rgba(255, 45, 179, 0.3), rgba(138, 43, 226, 0.3)) !important;
-  transform: translateY(-1px) !important;
-  box-shadow: 0 8px 24px rgba(255, 45, 179, 0.3) !important;
-}
-
 /* Legacy navigation styles - Updated for Evolved Minimalism */
 .nav-inner {
   max-width: 1200px;

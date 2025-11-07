@@ -4,7 +4,7 @@ import { Inter, Outfit } from 'next/font/google';
 import { Analytics } from "@vercel/analytics/next"
 import { getOpenSeaCollectionUrl } from '@/lib/opensea';
 import dynamic from 'next/dynamic';
-import { RainbowProvider } from '@/components/rainbow-provider'
+import { AppKitProvider } from '@/components/appkit-provider'
 import { ToastProvider } from '@/components/Toast'
 
 const inter = Inter({
@@ -67,11 +67,11 @@ export default function RootLayout({
         <link href="https://fonts.googleapis.com/css2?family=Mozilla+Headline:wght@200..700&display=swap" rel="stylesheet" />
       </head>
       <body className="bg-background-primary text-text-primary font-sans antialiased">
-        <RainbowProvider>
+        <AppKitProvider>
           <ToastProvider>
             {children}
           </ToastProvider>
-        </RainbowProvider>
+        </AppKitProvider>
         <Analytics />
       </body>
     </html>
