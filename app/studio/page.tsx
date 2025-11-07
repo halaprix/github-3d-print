@@ -38,7 +38,7 @@ function StudioInner() {
 // Both mini-app and regular web use the same GitHub login flow
 // The difference is only in storage mechanism (localStorage vs cookies)
 const useUsernameInput = false;
-	// Rainbow Kit hooks
+	// AppKit hooks
 	const { address: account, isConnected } = useAccount();
 	const { data: walletClient } = useWalletClient();
 	const publicClient = usePublicClient();
@@ -221,7 +221,7 @@ const useUsernameInput = false;
 					return;
 				}
 			} else {
-				// Use Rainbow Kit wallet for regular web
+				// Use AppKit wallet for regular web
 				if (!walletClient || !publicClient) {
 					showErrorToast('Mint Failed', 'Please connect your wallet');
 					return;
@@ -321,7 +321,7 @@ const useUsernameInput = false;
 					}]
 				});
 			} else {
-				// Mint using Rainbow Kit wallet with signature
+				// Mint using AppKit wallet with signature
 				if (!walletClient) {
 					throw new Error('Wallet client not available');
 				}

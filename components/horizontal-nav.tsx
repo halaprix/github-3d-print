@@ -2,7 +2,6 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { ConnectButton } from '@rainbow-me/rainbowkit';
 import { useState, useEffect } from 'react';
 import { useFarcasterMiniApp } from '@/lib/useFarcasterMiniApp';
 import { useAccount } from 'wagmi';
@@ -90,7 +89,7 @@ export function HorizontalNav() {
               )}
             </div>
           ) : (
-            <ConnectButton />
+            <appkit-button />
           )}
         </div>
       </div>
