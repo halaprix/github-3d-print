@@ -8,10 +8,10 @@ import { base } from '@reown/appkit/networks';
 import { cookieStorage, createStorage } from '@wagmi/core';
 import type { Config } from 'wagmi';
 
-const projectId = 'YOUR_PROJECT_ID'; // Get this from https://dashboard.reown.com - create a new project and copy the Project ID
+const projectId = process.env.NEXT_PUBLIC_REOWN_PROJECT_ID || 'YOUR_PROJECT_ID'; // Get this from https://dashboard.reown.com
 
-if (!projectId) {
-  throw new Error('Project ID is not defined');
+if (!projectId || projectId === 'YOUR_PROJECT_ID') {
+  throw new Error('Project ID is not defined. Set NEXT_PUBLIC_REOWN_PROJECT_ID in your environment variables.');
 }
 
 // Set up metadata
